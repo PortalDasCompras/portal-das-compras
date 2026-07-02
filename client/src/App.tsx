@@ -4,36 +4,73 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { CartProvider } from "./contexts/CartContext";
+import { AdminProvider } from "./contexts/AdminContext";
+import StoreLayout from "./components/StoreLayout";
+import AdminRoute from "./components/AdminRoute";
+
 import Home from "./pages/Home";
+import Categorias from "./pages/Categorias";
+import Categoria from "./pages/Categoria";
+import Produto from "./pages/Produto";
+import Carrinho from "./pages/Carrinho";
+import Checkout from "./pages/Checkout";
+import PedidoConfirmado from "./pages/PedidoConfirmado";
+import AdminLogin from "./pages/AdminLogin";
+import AdminDashboard from "./pages/AdminDashboard";
 
 function Router() {
-  // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
-      <Route path={"/"} component={Home} />
-      <Route path={"/404"} component={NotFound} />
-      {/* Final fallback route */}
+      {/* Store pages with layout */}
+      <Route path="/">
+        <StoreLayout><Home /></StoreLayout>
+      </Route>
+      <Route path="/categorias">
+        <StoreLayout><Categorias /></StoreLayout>
+      </Route>
+      <Route path="/categoria/:slug">
+        {(params) => <StoreLayout><Categoria /></StoreLayout>}
+      </Route>
+      <Route path="/produto/:id">
+        {(params) => <StoreLayout><Produto /></StoreLayout>}
+      </Route>
+      <Route path="/carrinho">
+        <StoreLayout><Carrinho /></StoreLayout>
+      </Route>
+      <Route path="/checkout">
+        <StoreLayout><Checkout /></StoreLayout>
+      </Route>
+      <Route path="/pedido-confirmado">
+        <StoreLayout><PedidoConfirmado /></StoreLayout>
+      </Route>
+
+      {/* Admin pages (no store layout) */}
+      <Route path="/admin">
+        <AdminLogin />
+      </Route>
+      <Route path="/admin/dashboard">
+        <AdminRoute><AdminDashboard /></AdminRoute>
+      </Route>
+
+      <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
   );
 }
 
-// NOTE: About Theme
-// - First choose a default theme according to your design style (dark or light bg), than change color palette in index.css
-//   to keep consistent foreground/background color across components
-// - If you want to make theme switchable, pass `switchable` ThemeProvider and use `useTheme` hook
-
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider
-        defaultTheme="light"
-        // switchable
-      >
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
+      <ThemeProvider defaultTheme="light">
+        <CartProvider>
+          <AdminProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Router />
+            </TooltipProvider>
+          </AdminProvider>
+        </CartProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );
