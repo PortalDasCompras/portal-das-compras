@@ -16,7 +16,7 @@ export default function PedidoConfirmado() {
         <div className="bg-gray-50 rounded-xl p-4 mb-6 text-left space-y-2">
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Package className="w-4 h-4 text-red-500" />
-            <span>Prazo de entrega: 7 a 15 dias úteis</span>
+            <span>Prazo de entrega: 1 a 3 dias úteis</span>
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <CheckCircle className="w-4 h-4 text-green-500" />

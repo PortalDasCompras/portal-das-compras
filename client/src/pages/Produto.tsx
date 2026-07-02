@@ -11,7 +11,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 const FAQ_ITEMS = [
-  { q: "Qual o prazo de entrega?", a: "O prazo médio de entrega é de 7 a 15 dias úteis após a confirmação do pagamento, com envio para todo o Brasil." },
+  { q: "Qual o prazo de entrega?", a: "O prazo médio de entrega é de 1 a 3 dias úteis após a confirmação do pagamento, com envio para todo o Brasil." },
   { q: "O produto tem garantia?", a: "Sim, todos os produtos possuem garantia mínima de 90 dias contra defeitos de fabricação." },
   { q: "Como funciona o pagamento?", a: "Aceitamos PIX, boleto bancário e cartão de crédito em até 12x sem juros." },
   { q: "Posso trocar ou devolver?", a: "Sim, você tem até 7 dias após o recebimento para solicitar troca ou devolução sem custo adicional." },
