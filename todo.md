@@ -41,3 +41,7 @@
 - [x] Botão "Adicionar ao carrinho" na página de favoritos
 - [x] Contador de favoritos no Header
 - [x] Sincronização entre páginas (adicionar/remover em qualquer lugar)
+
+
+## Correções e Melhorias
+- [x] Adicionar cookie-parser middleware para processar cookies do admin
