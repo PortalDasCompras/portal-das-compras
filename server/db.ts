@@ -1,367 +1,200 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { InsertUser, InsertProduct, InsertOrder } from "../drizzle/schema";
+import { productDb, orderDb, userDb } from "./local-db";
 
-let _supabase: SupabaseClient | null = null;
-
-export async function getDb() {
-  if (!_supabase) {
-    try {
-      const supabaseUrl = process.env.VITE_SUPABASE_URL;
-      const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-      
-      if (!supabaseUrl || !serviceRoleKey) {
-        console.warn('[Database] Supabase credentials not configured');
-        return null;
-      }
-      
-      _supabase = createClient(supabaseUrl, serviceRoleKey, {
-        auth: { persistSession: false }
-      });
-    } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
-      _supabase = null;
-    }
-  }
-  return _supabase;
-}
-
-export async function createOrder(data: any) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  
-  try {
-    const orderData = {
-      customer_name: data.customerName,
-      customer_email: data.customerEmail,
-      customer_phone: data.customerPhone,
-      customer_cpf: data.customerCpf,
-      address_cep: data.addressCep,
-      address_street: data.addressStreet,
-      address_number: data.addressNumber,
-      address_complement: data.addressComplement || null,
-      address_neighborhood: data.addressNeighborhood,
-      address_city: data.addressCity,
-      address_state: data.addressState,
-      items: JSON.stringify(data.items),
-      total: parseFloat(data.total),
-      payment_method: data.paymentMethod || null,
-      status: 'pending'
-    };
-
-    const { data: order, error } = await db
-      .from('orders')
-      .insert([orderData])
-      .select()
-      .single();
-    
-    if (error) {
-      console.error('DB Error:', error);
-      throw error;
-    }
-    return order || { id: 0 };
-  } catch (error: any) {
-    console.error('Erro ao inserir pedido:', error.message);
-    throw error;
-  }
-}
-
-export async function getOrderById(id: number) {
-  const db = await getDb();
-  if (!db) return undefined;
-  
-  try {
-    const { data, error } = await db
-      .from('orders')
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    if (error && error.code !== 'PGRST116') throw error;
-    return data;
-  } catch (error) {
-    return undefined;
-  }
-}
-
-export async function updateOrderPayment(orderId: number, paymentData: any) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  
-  try {
-    const updateData: any = {
-      updated_at: new Date().toISOString()
-    };
-    if (paymentData.paymentId) updateData.payment_id = paymentData.paymentId;
-    if (paymentData.paymentStatus) updateData.payment_status = paymentData.paymentStatus;
-    if (paymentData.pixQrCode) updateData.pix_qr_code = paymentData.pixQrCode;
-    if (paymentData.pixCopyPaste) updateData.pix_copy_paste = paymentData.pixCopyPaste;
-    if (paymentData.barcodeNumber) updateData.barcode_number = paymentData.barcodeNumber;
-    if (paymentData.barcodePicture) updateData.barcode_picture = paymentData.barcodePicture;
-
-    const { data, error } = await db
-      .from('orders')
-      .update(updateData)
-      .eq('id', orderId)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
-  } catch (error: any) {
-    console.error('Erro ao atualizar pagamento:', error.message);
-    throw error;
-  }
-}
-
-export async function getAllOrders() {
-  const db = await getDb();
-  if (!db) return [];
-  
-  try {
-    const { data, error } = await db
-      .from('orders')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    return data || [];
-  } catch (error) {
-    return [];
-  }
-}
-
-export async function getUserByOpenId(openId: string) {
-  const db = await getDb();
-  if (!db) return undefined;
-  
-  try {
-    const { data, error } = await db
-      .from('users')
-      .select('*')
-      .eq('openId', openId)
-      .single();
-    
-    if (error && error.code !== 'PGRST116') throw error;
-    return data;
-  } catch (error) {
-    return undefined;
-  }
-}
-
-export async function getAdminSession(token: string) {
-  const db = await getDb();
-  if (!db) return undefined;
-  
-  try {
-    const { data, error } = await db
-      .from('adminSessions')
-      .select('*')
-      .eq('token', token)
-      .single();
-    
-    if (error && error.code !== 'PGRST116') throw error;
-    return data;
-  } catch (error) {
-    return undefined;
-  }
-}
-
-export async function deleteAdminSession(token: string) {
-  const db = await getDb();
-  if (!db) return;
-  
-  try {
-    await db
-      .from('adminSessions')
-      .delete()
-      .eq('token', token);
-  } catch (error) {
-    console.error('Erro ao deletar sessão:', error);
-  }
-}
-
-export async function updateOrderStatus(orderId: number, status: string) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  
-  try {
-    const { data, error } = await db
-      .from('orders')
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq('id', orderId)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
-  } catch (error: any) {
-    console.error('Erro ao atualizar status:', error.message);
-    throw error;
-  }
-}
-
-export async function getAllProductsAdmin() {
-  const db = await getDb();
-  if (!db) return [];
-  
-  try {
-    const { data, error } = await db
-      .from('products')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    return data || [];
-  } catch (error) {
-    return [];
-  }
-}
-
-export async function updateProduct(id: number, data: any) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  
-  try {
-    const { data: product, error } = await db
-      .from('products')
-      .update(data)
-      .eq('id', id)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return product;
-  } catch (error: any) {
-    console.error('Erro ao atualizar produto:', error.message);
-    throw error;
-  }
-}
-
-export async function deleteProduct(id: number) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  
-  try {
-    const { error } = await db
-      .from('products')
-      .delete()
-      .eq('id', id);
-    
-    if (error) throw error;
-  } catch (error: any) {
-    console.error('Erro ao deletar produto:', error.message);
-    throw error;
-  }
-}
-
-export async function createAdminSession(token: string, expiresAt: Date) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  
-  try {
-    const { data, error } = await db
-      .from('adminSessions')
-      .insert([{ token, expiresAt }])
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
-  } catch (error: any) {
-    console.error('Erro ao criar sessão:', error.message);
-    throw error;
-  }
-}
+// ─── Products ──────────────────────────────────────────────────────────────
 
 export async function getAllProducts(search?: string) {
-  const db = await getDb();
-  if (!db) return [];
-  
   try {
-    let query = db
-      .from('products')
-      .select('*');
-    
     if (search) {
-      query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
+      return productDb.search(search);
     }
-    
-    const { data, error } = await query
-      .order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    return data || [];
+    return productDb.getAll();
   } catch (error) {
+    console.error("Erro ao buscar produtos:", error);
     return [];
   }
 }
 
 export async function getProductsByCategory(category: string) {
-  const db = await getDb();
-  if (!db) return [];
-  
   try {
-    const { data, error } = await db
-      .from('products')
-      .select('*')
-      .eq('category', category)
-      .order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    return data || [];
+    return productDb.getByCategory(category);
   } catch (error) {
+    console.error("Erro ao buscar produtos por categoria:", error);
     return [];
   }
 }
 
 export async function getProductById(id: number) {
-  const db = await getDb();
-  if (!db) return undefined;
-  
   try {
-    const { data, error } = await db
-      .from('products')
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    if (error && error.code !== 'PGRST116') throw error;
-    return data;
+    return productDb.getById(id);
   } catch (error) {
-    return undefined;
+    console.error("Erro ao buscar produto:", error);
+    return null;
   }
 }
 
-export async function createProduct(data: InsertProduct) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  
+export async function getAllProductsAdmin() {
   try {
-    const { data: product, error } = await db
-      .from('products')
-      .insert([data])
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return product;
-  } catch (error: any) {
-    console.error('Erro ao criar produto:', error.message);
+    return productDb.getAll();
+  } catch (error) {
+    console.error("Erro ao buscar produtos admin:", error);
+    return [];
+  }
+}
+
+export async function createProduct(data: any) {
+  try {
+    return productDb.create({
+      name: data.name,
+      description: data.description,
+      price: parseFloat(data.price),
+      originalPrice: parseFloat(data.originalPrice),
+      category: data.category,
+      image: data.image,
+      stock: data.stock || 10,
+      active: true,
+    });
+  } catch (error) {
+    console.error("Erro ao criar produto:", error);
     throw error;
   }
 }
 
-export async function upsertUser(user: InsertUser): Promise<void> {
-  const db = await getDb();
-  if (!db) return;
-  
+export async function updateProduct(id: number, data: any) {
   try {
-    const { error } = await db
-      .from('users')
-      .upsert([user], { onConflict: 'openId' });
-    
-    if (error) throw error;
+    return productDb.update(id, {
+      name: data.name,
+      description: data.description,
+      price: parseFloat(data.price),
+      originalPrice: parseFloat(data.originalPrice),
+      category: data.category,
+      image: data.image,
+      stock: data.stock,
+      active: data.active,
+    });
   } catch (error) {
-    console.error('Erro ao fazer upsert de usuário:', error);
+    console.error("Erro ao atualizar produto:", error);
+    throw error;
   }
+}
+
+export async function deleteProduct(id: number) {
+  try {
+    return productDb.delete(id);
+  } catch (error) {
+    console.error("Erro ao deletar produto:", error);
+    throw error;
+  }
+}
+
+// ─── Orders ────────────────────────────────────────────────────────────────
+
+export async function createOrder(data: any) {
+  try {
+    return orderDb.create({
+      customerName: data.customerName,
+      customerEmail: data.customerEmail,
+      customerPhone: data.customerPhone,
+      customerCpf: data.customerCpf,
+      addressCep: data.addressCep,
+      addressStreet: data.addressStreet,
+      addressNumber: data.addressNumber,
+      addressComplement: data.addressComplement,
+      addressNeighborhood: data.addressNeighborhood,
+      addressCity: data.addressCity,
+      addressState: data.addressState,
+      items: data.items,
+      total: parseFloat(data.total),
+      status: data.status || "pendente",
+      paymentMethod: data.paymentMethod || "pix",
+    });
+  } catch (error) {
+    console.error("Erro ao criar pedido:", error);
+    throw error;
+  }
+}
+
+export async function getAllOrders() {
+  try {
+    return orderDb.getAll();
+  } catch (error) {
+    console.error("Erro ao buscar pedidos:", error);
+    return [];
+  }
+}
+
+export async function getOrderById(id: number) {
+  try {
+    return orderDb.getById(id);
+  } catch (error) {
+    console.error("Erro ao buscar pedido:", error);
+    return null;
+  }
+}
+
+export async function updateOrderStatus(id: number, status: string) {
+  try {
+    return orderDb.update(id, { status });
+  } catch (error) {
+    console.error("Erro ao atualizar status do pedido:", error);
+    throw error;
+  }
+}
+
+export async function updateOrderPayment(id: number, data: any) {
+  try {
+    return orderDb.update(id, {
+      paymentId: data.paymentId,
+      paymentStatus: data.paymentStatus,
+      pixQrCode: data.pixQrCode,
+      pixCopyPaste: data.pixCopyPaste,
+      barcodeNumber: data.barcodeNumber,
+      barcodePicture: data.barcodePicture,
+    });
+  } catch (error) {
+    console.error("Erro ao atualizar pagamento:", error);
+    throw error;
+  }
+}
+
+// ─── Users ────────────────────────────────────────────────────────────────
+
+export async function getUserByOpenId(openId: string) {
+  try {
+    return userDb.getByOpenId(openId);
+  } catch (error) {
+    console.error("Erro ao buscar usuário:", error);
+    return null;
+  }
+}
+
+export async function upsertUser(data: any) {
+  try {
+    const user = userDb.upsertByOpenId(data.openId, {
+      name: data.name || undefined,
+      email: data.email || undefined,
+      loginMethod: data.loginMethod || undefined,
+      role: data.role || "user",
+    });
+    return user;
+  } catch (error) {
+    console.error("Erro ao fazer upsert de usuário:", error);
+    throw error;
+  }
+}
+
+// ─── Admin Sessions ────────────────────────────────────────────────────────
+
+let adminSessions: Map<string, { expiresAt: Date }> = new Map();
+
+export async function createAdminSession(token: string, expiresAt: Date) {
+  adminSessions.set(token, { expiresAt });
+}
+
+export async function getAdminSession(token: string) {
+  return adminSessions.get(token) || null;
+}
+
+export async function deleteAdminSession(token: string) {
+  adminSessions.delete(token);
 }

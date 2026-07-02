@@ -1,0 +1,148 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const DB_DIR = path.join(__dirname, '.local-db');
+const PRODUCTS_FILE = path.join(DB_DIR, 'products.json');
+
+// Garantir que o diretório existe
+if (!fs.existsSync(DB_DIR)) {
+  fs.mkdirSync(DB_DIR, { recursive: true });
+}
+
+const products = [
+  {
+    id: 1,
+    name: "Smartphone Samsung Galaxy A12",
+    description: "Smartphone com tela de 6.5 polegadas, câmera 48MP e bateria de 5000mAh",
+    price: 899.99,
+    originalPrice: 1299.99,
+    category: "eletronicos",
+    image: "https://via.placeholder.com/300x300?text=Samsung+Galaxy+A12",
+    stock: 15,
+    active: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 2,
+    name: "Fone de Ouvido Bluetooth JBL",
+    description: "Fone sem fio com cancelamento de ruído ativo e bateria de 30 horas",
+    price: 299.99,
+    originalPrice: 499.99,
+    category: "eletronicos",
+    image: "https://via.placeholder.com/300x300?text=JBL+Fone",
+    stock: 25,
+    active: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 3,
+    name: "Camiseta Básica Branca",
+    description: "Camiseta 100% algodão, confortável e versátil",
+    price: 49.99,
+    originalPrice: 99.99,
+    category: "moda",
+    image: "https://via.placeholder.com/300x300?text=Camiseta+Branca",
+    stock: 50,
+    active: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 4,
+    name: "Calça Jeans Premium",
+    description: "Calça jeans de alta qualidade com acabamento premium",
+    price: 129.99,
+    originalPrice: 199.99,
+    category: "moda",
+    image: "https://via.placeholder.com/300x300?text=Calca+Jeans",
+    stock: 30,
+    active: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 5,
+    name: "Espelho de Parede Decorativo",
+    description: "Espelho redondo com moldura de madeira para decoração",
+    price: 89.99,
+    originalPrice: 149.99,
+    category: "casa",
+    image: "https://via.placeholder.com/300x300?text=Espelho+Decorativo",
+    stock: 12,
+    active: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 6,
+    name: "Luminária LED Inteligente",
+    description: "Luminária LED com controle por aplicativo e múltiplas cores",
+    price: 149.99,
+    originalPrice: 249.99,
+    category: "casa",
+    image: "https://via.placeholder.com/300x300?text=Luminaria+LED",
+    stock: 18,
+    active: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 7,
+    name: "Bola de Futebol Profissional",
+    description: "Bola de futebol oficial com costura térmica",
+    price: 199.99,
+    originalPrice: 299.99,
+    category: "esportes",
+    image: "https://via.placeholder.com/300x300?text=Bola+Futebol",
+    stock: 20,
+    active: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 8,
+    name: "Tênis Esportivo Running",
+    description: "Tênis de corrida com tecnologia de amortecimento avançada",
+    price: 349.99,
+    originalPrice: 499.99,
+    category: "esportes",
+    image: "https://via.placeholder.com/300x300?text=Tenis+Running",
+    stock: 22,
+    active: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 9,
+    name: "Sérum Facial Antienvelhecimento",
+    description: "Sérum com vitamina C e ácido hialurônico para pele luminosa",
+    price: 79.99,
+    originalPrice: 129.99,
+    category: "beleza",
+    image: "https://via.placeholder.com/300x300?text=Serum+Facial",
+    stock: 35,
+    active: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 10,
+    name: "Máscara Facial Hidratante",
+    description: "Máscara com ingredientes naturais para hidratação profunda",
+    price: 59.99,
+    originalPrice: 99.99,
+    category: "beleza",
+    image: "https://via.placeholder.com/300x300?text=Mascara+Facial",
+    stock: 40,
+    active: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];
+
+fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(products, null, 2));
+console.log(`✅ ${products.length} produtos adicionados ao banco de dados local!`);
