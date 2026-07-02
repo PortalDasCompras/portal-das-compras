@@ -15,7 +15,7 @@ export default function AdminRoute({ children }: { children: ReactNode }) {
   }
 
   if (!isAdmin) {
-    return <Redirect to="/admin" />;
+    return <Redirect to="/admin-portal-claysson" />;
   }
 
   return <>{children}</>;

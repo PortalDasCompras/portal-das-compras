@@ -15,7 +15,6 @@ export default function Header() {
     { href: "/todos-produtos", label: "Todos os Produtos" },
     { href: "/categorias", label: "Categorias" },
     { href: "/favoritos", label: "Favoritos" },
-    { href: "/admin", label: "Admin" },
   ];
 
   return (

@@ -54,12 +54,26 @@ function Router() {
         <StoreLayout><Favoritos /></StoreLayout>
       </Route>
 
-      {/* Admin pages (no store layout) */}
-      <Route path="/admin">
+      {/* Admin pages (no store layout) - HIDDEN URL */}
+      <Route path="/admin-portal-claysson">
         <AdminLogin />
       </Route>
-      <Route path="/admin/dashboard">
+      <Route path="/admin-portal-claysson/dashboard">
         <AdminRoute><AdminDashboard /></AdminRoute>
+      </Route>
+      
+      {/* Redirect old /admin paths to home */}
+      <Route path="/admin">
+        {() => {
+          window.location.href = '/';
+          return null;
+        }}
+      </Route>
+      <Route path="/admin/*">
+        {() => {
+          window.location.href = '/';
+          return null;
+        }}
       </Route>
 
       <Route path="/404" component={NotFound} />
