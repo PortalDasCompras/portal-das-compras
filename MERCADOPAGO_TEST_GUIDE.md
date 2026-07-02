@@ -1,271 +1,413 @@
-# Guia de Teste - Mercado Pago Checkout Transparente
+# 🧪 Guia Completo de Teste - Mercado Pago Checkout Transparente
 
-## Configuração Necessária
+## 📋 Resumo Rápido
 
-Antes de testar, certifique-se de que as seguintes variáveis de ambiente estão configuradas:
-
-```
-MERCADOPAGO_ACCESS_TOKEN=seu_access_token
-VITE_MERCADOPAGO_PUBLIC_KEY=sua_public_key
-```
-
-## Dados de Teste do Mercado Pago
-
-### 1. Teste com PIX
-
-**Dados do Cliente:**
-```
-Nome: João Silva
-Email: joao@test.com
-Telefone: (11) 99999-9999
-CPF: 123.456.789-01
-CEP: 01310-100 (São Paulo, Av. Paulista)
-```
-
-**Resultado Esperado:**
-- ✅ Pedido criado com sucesso
-- ✅ QR Code PIX exibido
-- ✅ Código de cópia e cola disponível
-- ✅ Status: "pending" (aguardando confirmação)
+| Método | Status | Dados de Teste |
+|--------|--------|---|
+| **PIX** | ✅ Sucesso | Automático - QR Code gerado |
+| **Cartão Aprovado** | ✅ Sucesso | 4111 1111 1111 1111 |
+| **Cartão Recusado** | ❌ Falha | 5555 5555 5555 4444 |
+| **Boleto** | ⏳ Pendente | Automático - Código gerado |
 
 ---
 
-### 2. Teste com Cartão de Crédito (Aprovado)
+## 🔑 Dados de Teste do Mercado Pago
 
-**Dados do Cartão (Teste - Aprovado):**
-```
-Número: 4111 1111 1111 1111
-Titular: JOAO SILVA
-Validade: 12/25
-CVV: 123
-```
+### 1️⃣ PIX (Pagamento Instantâneo)
 
-**Dados do Cliente:**
-```
-Nome: João Silva
-Email: joao@test.com
-Telefone: (11) 99999-9999
-CPF: 123.456.789-01
-```
+**Fluxo:**
+1. Adicione um produto ao carrinho
+2. Vá para checkout
+3. Preencha dados pessoais
+4. Selecione **PIX**
+5. Clique em **"Confirmar Pagamento"**
+6. Um **QR Code** será exibido
+7. Copie o código PIX (copy_paste)
 
 **Resultado Esperado:**
-- ✅ Cartão tokenizado com sucesso
-- ✅ Pagamento aprovado
-- ✅ Status: "approved"
-- ✅ Payment ID retornado
-- ✅ Pedido marcado como confirmado
+```json
+{
+  "status": "pending",
+  "payment_method": "pix",
+  "qr_code": "00020126580014br.gov.bcb.pix...",
+  "copy_paste": "00020126580014br.gov.bcb.pix...",
+  "expiration_date": "2026-07-03T21:00:00Z"
+}
+```
 
 ---
 
-### 3. Teste com Cartão de Crédito (Recusado)
+### 2️⃣ Cartão de Crédito - APROVADO ✅
 
-**Dados do Cartão (Teste - Recusado):**
+**Dados do Cartão:**
 ```
-Número: 5555 5555 5555 4444
-Titular: MARIA SANTOS
-Validade: 12/25
-CVV: 456
+Número:     4111 1111 1111 1111
+Titular:    APRO
+Validade:   11/25
+CVV:        123
 ```
+
+**Dados do Cliente (exemplo):**
+```
+Nome:       João Silva
+Email:      joao@test.com
+Telefone:   (11) 99999-9999
+CPF:        123.456.789-01
+CEP:        01310-100
+```
+
+**Fluxo:**
+1. Adicione um produto ao carrinho
+2. Vá para checkout
+3. Preencha dados pessoais (use os dados acima)
+4. Selecione **Cartão de Crédito**
+5. Preencha os dados do cartão
+6. Clique em **"Confirmar Pagamento"**
 
 **Resultado Esperado:**
-- ❌ Pagamento recusado
-- ❌ Mensagem de erro exibida
-- ❌ Pedido mantém status "pendente"
-- ❌ Usuário pode tentar novamente
+```json
+{
+  "status": "approved",
+  "payment_method": "credit_card",
+  "card_last_four": "1111",
+  "authorization_code": "123456",
+  "payment_id": "987654321"
+}
+```
 
 ---
 
-### 4. Teste com Boleto
+### 3️⃣ Cartão de Crédito - RECUSADO ❌
 
-**Dados do Cliente:**
+**Dados do Cartão:**
 ```
-Nome: Pedro Costa
-Email: pedro@test.com
-Telefone: (21) 98888-8888
-CPF: 987.654.321-09
+Número:     5555 5555 5555 4444
+Titular:    OOPS
+Validade:   11/25
+CVV:        456
 ```
+
+**Fluxo:**
+1. Repita os passos do cartão aprovado
+2. Use os dados acima
+3. Clique em **"Confirmar Pagamento"**
 
 **Resultado Esperado:**
-- ✅ Pedido criado com sucesso
-- ✅ Número do boleto exibido
-- ✅ Código de barras disponível
-- ✅ Status: "pending" (aguardando pagamento)
+```json
+{
+  "status": "rejected",
+  "payment_method": "credit_card",
+  "error": "Cartão recusado pelo banco",
+  "error_code": "CARD_DECLINED"
+}
+```
 
 ---
 
-## Fluxo de Teste Completo
+### 4️⃣ Boleto (Pagamento Diferido)
 
-### Passo 1: Acessar a Loja
+**Fluxo:**
+1. Adicione um produto ao carrinho
+2. Vá para checkout
+3. Preencha dados pessoais
+4. Selecione **Boleto**
+5. Clique em **"Confirmar Pagamento"**
+6. Um **código de barras** será exibido
+
+**Resultado Esperado:**
+```json
+{
+  "status": "pending",
+  "payment_method": "ticket",
+  "barcode": "12345.67890 12345.678901 12345.678901 1 12345678901234",
+  "pdf_url": "https://...",
+  "due_date": "2026-07-04"
+}
 ```
-URL: http://localhost:3000 (desenvolvimento)
-URL: https://comprasportal-mrzgqbgx.manus.space (produção)
+
+---
+
+## 📱 Passo a Passo Detalhado
+
+### ✅ Teste 1: PIX
+
+**Passo 1: Adicionar Produto**
+```
+1. Acesse http://localhost:3000
+2. Clique em qualquer produto (ex: "Blusa Moletom Cinza")
+3. Clique em "Adicionar ao Carrinho"
 ```
 
-### Passo 2: Adicionar Produto ao Carrinho
-1. Clique em qualquer produto
-2. Clique em "Adicionar ao Carrinho"
-3. Verifique se o produto aparece no carrinho
-
-### Passo 3: Ir para Checkout
-1. Clique no ícone do carrinho
+**Passo 2: Ir para Checkout**
+```
+1. Clique no ícone do carrinho (canto superior direito)
 2. Clique em "Finalizar Compra"
+```
 
-### Passo 4: Preencher Dados do Cliente
-1. Nome: `João Silva`
-2. Email: `joao@test.com`
-3. Telefone: `(11) 99999-9999`
-4. CPF: `123.456.789-01`
-5. CEP: `01310-100`
-6. Clique em "Buscar CEP" para auto-preencher endereço
+**Passo 3: Preencher Dados Pessoais**
+```
+Nome:       João Silva
+Email:      joao@test.com
+Telefone:   11987654321 (sem formatação)
+CPF:        12345678901 (sem formatação)
+CEP:        01310100 (sem formatação)
+```
 
-### Passo 5: Escolher Método de Pagamento
-
-#### Opção A: PIX
-1. Selecione "PIX"
+**Passo 4: Selecionar PIX**
+```
+1. Selecione a opção "PIX"
 2. Clique em "Confirmar Pagamento"
-3. Verifique se o QR Code é exibido
-4. Copie o código PIX
+3. Aguarde o QR Code ser gerado
+```
 
-#### Opção B: Cartão de Crédito
+**Passo 5: Validar Resposta**
+```
+✅ QR Code exibido na tela
+✅ Código de cópia e cola disponível
+✅ Pedido criado no banco de dados
+✅ Status: "pending"
+```
+
+---
+
+### ✅ Teste 2: Cartão Aprovado
+
+**Passo 1-3:** Igual ao Teste 1
+
+**Passo 4: Selecionar Cartão de Crédito**
+```
 1. Selecione "Cartão de Crédito"
-2. Preencha os dados do cartão de teste
+2. Preencha os dados:
+   - Número: 4111 1111 1111 1111
+   - Titular: APRO
+   - Mês: 11
+   - Ano: 25
+   - CVV: 123
 3. Clique em "Confirmar Pagamento"
-4. Verifique se o pagamento foi aprovado
+```
 
-#### Opção C: Boleto
+**Passo 5: Validar Resposta**
+```
+✅ Mensagem de sucesso exibida
+✅ Redirecionado para página de confirmação
+✅ Pedido aparece no Admin com status "approved"
+✅ Recebe email de confirmação (em produção)
+```
+
+---
+
+### ❌ Teste 3: Cartão Recusado
+
+**Passo 1-3:** Igual ao Teste 1
+
+**Passo 4: Selecionar Cartão de Crédito**
+```
+1. Selecione "Cartão de Crédito"
+2. Preencha os dados:
+   - Número: 5555 5555 5555 4444
+   - Titular: OOPS
+   - Mês: 11
+   - Ano: 25
+   - CVV: 456
+3. Clique em "Confirmar Pagamento"
+```
+
+**Passo 5: Validar Resposta**
+```
+❌ Mensagem de erro exibida
+❌ Pedido mantém status "pending"
+❌ Usuário pode tentar novamente com outro cartão
+```
+
+---
+
+### ✅ Teste 4: Boleto
+
+**Passo 1-3:** Igual ao Teste 1
+
+**Passo 4: Selecionar Boleto**
+```
 1. Selecione "Boleto"
 2. Clique em "Confirmar Pagamento"
-3. Verifique se o código de barras é exibido
+3. Aguarde o código de barras ser gerado
+```
 
-### Passo 6: Verificar Confirmação
-- Após sucesso, você deve ser redirecionado para a página de confirmação
-- Verifique se o pedido aparece no Admin Dashboard
+**Passo 5: Validar Resposta**
+```
+✅ Código de barras exibido
+✅ PDF disponível para download
+✅ Data de vencimento mostrada (1 dia útil)
+✅ Pedido criado com status "pending"
+```
 
 ---
 
-## Validações Importantes
+## 🔍 Validações Importantes
 
 ### Validação de Dados do Cliente
-- ✅ CPF: Deve ter exatamente 11 dígitos
-- ✅ Telefone: Deve ter 10 ou 11 dígitos
-- ✅ Email: Deve ser um email válido
-- ✅ CEP: Deve ter 8 dígitos (sem hífen)
+
+| Campo | Regra | Exemplo |
+|-------|-------|---------|
+| **Nome** | Mínimo 3 caracteres | João Silva |
+| **Email** | Formato válido | joao@test.com |
+| **Telefone** | 10 ou 11 dígitos | 11987654321 |
+| **CPF** | 11 dígitos | 12345678901 |
+| **CEP** | 8 dígitos | 01310100 |
 
 ### Validação de Cartão
-- ✅ Número: Deve ter 16 dígitos
-- ✅ Titular: Não pode estar vazio
-- ✅ Validade: Mês (01-12) e Ano (2 dígitos)
-- ✅ CVV: Deve ter 3 ou 4 dígitos
 
-### Validação de Endereço
-- ✅ CEP válido deve retornar endereço automaticamente
-- ✅ CEP inválido deve mostrar erro
-- ✅ Todos os campos de endereço devem ser preenchidos
-
----
-
-## Webhook de Confirmação
-
-Após um pagamento bem-sucedido, o Mercado Pago enviará um webhook para:
-
-```
-POST /api/webhooks/mercadopago
-```
-
-**O webhook deve:**
-1. Validar a assinatura HMAC-SHA256
-2. Processar o evento de pagamento
-3. Atualizar o status do pedido no banco de dados
-4. Retornar `{ success: true }`
-
-**Para testar webhooks localmente:**
-```bash
-# Use ngrok para expor seu servidor local
-ngrok http 3000
-
-# Configure a URL do webhook no Mercado Pago:
-# https://seu-ngrok-url.ngrok.io/api/webhooks/mercadopago
-```
+| Campo | Regra | Exemplo |
+|-------|-------|---------|
+| **Número** | 16 dígitos | 4111111111111111 |
+| **Titular** | Máximo 26 caracteres | APRO |
+| **Mês** | 01-12 | 11 |
+| **Ano** | 2 dígitos (futuro) | 25 |
+| **CVV** | 3 ou 4 dígitos | 123 |
 
 ---
 
-## Troubleshooting
+## 📊 Respostas HTTP Esperadas
 
-### Erro: "Mercado Pago Access Token não configurado"
-- Verifique se `MERCADOPAGO_ACCESS_TOKEN` está definido
-- Verifique se o token é válido no painel do Mercado Pago
+### PIX - Sucesso (200)
+```
+POST /api/trpc/orders.processPayment
+Content-Type: application/json
 
-### Erro: "Mercado Pago Public Key não configurada"
-- Verifique se `VITE_MERCADOPAGO_PUBLIC_KEY` está definido
-- Verifique se a chave pública é válida
+{
+  "orderId": "123456",
+  "paymentMethod": "pix",
+  "amount": 129.90
+}
 
-### Erro: "CPF inválido"
-- Certifique-se de que o CPF tem exatamente 11 dígitos
-- Use um CPF de teste válido
+Response:
+{
+  "status": "pending",
+  "qr_code": "00020126...",
+  "copy_paste": "00020126...",
+  "expiration": "2026-07-03T21:00:00Z"
+}
+```
 
-### Erro: "Telefone inválido"
-- Certifique-se de que o telefone tem 10 ou 11 dígitos
-- Inclua o código de área (2 dígitos)
+### Cartão Aprovado (200)
+```
+POST /api/trpc/orders.processPayment
+Content-Type: application/json
 
-### Erro: "Erro ao tokenizar cartão"
-- Verifique se os dados do cartão estão corretos
-- Use um cartão de teste válido do Mercado Pago
-- Verifique se a chave pública está correta
+{
+  "orderId": "123456",
+  "paymentMethod": "credit_card",
+  "cardData": {...}
+}
 
-### QR Code PIX não aparece
-- Verifique se o pagamento foi criado com sucesso
-- Verifique se a resposta do Mercado Pago contém `point_of_interaction.qr_code`
-- Verifique os logs do servidor
+Response:
+{
+  "status": "approved",
+  "payment_id": "987654321",
+  "authorization_code": "123456"
+}
+```
+
+### Cartão Recusado (400)
+```
+Response:
+{
+  "status": "rejected",
+  "error": "Cartão recusado pelo banco"
+}
+```
 
 ---
 
-## Dados de Teste Adicionais
+## 🛠️ Troubleshooting
 
-### CPFs de Teste Válidos
-```
-123.456.789-01
-987.654.321-09
-111.222.333-44
-555.666.777-88
-```
+### ❌ "Erro ao processar pagamento"
+**Solução:**
+1. Verifique se `MERCADOPAGO_ACCESS_TOKEN` está configurado
+2. Verifique os logs: `.manus-logs/devserver.log`
+3. Valide os dados do cliente (CPF, telefone, email)
 
-### CEPs de Teste Válidos (São Paulo)
-```
-01310-100 (Avenida Paulista)
-01310-200 (Avenida Paulista)
-01310-300 (Avenida Paulista)
-```
+### ❌ "Cartão inválido"
+**Solução:**
+1. Use apenas os cartões de teste fornecidos acima
+2. Não use cartões reais
+3. Verifique a formatação (sem espaços)
 
-### Números de Cartão de Teste
+### ❌ "PIX não gera QR Code"
+**Solução:**
+1. Verifique a conexão com Mercado Pago
+2. Verifique se o token é válido
+3. Tente novamente em alguns segundos
+4. Verifique os logs do servidor
 
-**Aprovado:**
-- 4111 1111 1111 1111 (Visa)
-- 5555 5555 5555 4444 (Mastercard)
-
-**Recusado:**
-- 4000 0000 0000 0002 (Visa - Recusado)
-- 5555 5555 5555 5557 (Mastercard - Recusado)
+### ❌ "Pedido não aparece no Admin"
+**Solução:**
+1. Faça login no admin: `/admin-portal-claysson`
+2. Usuário: `claysson` | Senha: `1508`
+3. Verifique a aba "Pedidos"
+4. Atualize a página (F5)
 
 ---
 
-## Checklist de Teste
+## ✅ Checklist de Teste Completo
 
+### Testes Básicos
 - [ ] PIX: QR Code exibido corretamente
 - [ ] PIX: Código de cópia e cola disponível
-- [ ] Cartão: Pagamento aprovado com sucesso
-- [ ] Cartão: Pagamento recusado mostra erro
+- [ ] Cartão Aprovado: Pagamento processado com sucesso
+- [ ] Cartão Recusado: Erro exibido corretamente
 - [ ] Boleto: Código de barras exibido
-- [ ] Validação: CPF inválido mostra erro
-- [ ] Validação: Telefone inválido mostra erro
-- [ ] Validação: CEP inválido mostra erro
-- [ ] Webhook: Status do pedido atualizado após pagamento
-- [ ] Admin: Pedido aparece no dashboard
-- [ ] Admin: Status do pagamento correto
+
+### Validações
+- [ ] CPF inválido: Mostra erro
+- [ ] Telefone inválido: Mostra erro
+- [ ] Email inválido: Mostra erro
+- [ ] CEP inválido: Mostra erro
+- [ ] Cartão inválido: Mostra erro
+
+### Admin
+- [ ] Login funciona com credenciais corretas
+- [ ] Login bloqueia após 5 tentativas erradas
+- [ ] Pedidos aparecem no dashboard
+- [ ] Status do pagamento está correto
+- [ ] Pode editar/deletar produtos
+
+### Segurança
+- [ ] URL do admin não aparece em lugar nenhum
+- [ ] Cliente redirecionado para home ao tentar acessar admin
+- [ ] Sessão expira após 30 minutos
+- [ ] Logout funciona corretamente
 
 ---
 
-## Links Úteis
+## 📞 Suporte
 
-- [Documentação Mercado Pago](https://www.mercadopago.com.br/developers/pt/docs)
-- [Dados de Teste Mercado Pago](https://www.mercadopago.com.br/developers/pt/docs/checkout-api/integration-test)
-- [Webhook Mercado Pago](https://www.mercadopago.com.br/developers/pt/docs/webhooks)
+Se encontrar problemas:
+
+1. **Verifique os logs:**
+   ```bash
+   tail -f .manus-logs/devserver.log
+   ```
+
+2. **Teste a API diretamente:**
+   ```bash
+   curl -X POST http://localhost:3000/api/trpc/orders.create \
+     -H "Content-Type: application/json" \
+     -d '{"...": "..."}'
+   ```
+
+3. **Verifique o banco de dados:**
+   - Acesse o Admin Dashboard
+   - Verifique a aba "Pedidos"
+
+---
+
+## 🚀 Próximos Passos
+
+Após validar todos os testes:
+
+1. ✅ Integrar vídeo da mulher em todas as 35 páginas
+2. ✅ Configurar webhook do Mercado Pago
+3. ✅ Deploy no Vercel
+4. ✅ Ativar modo de produção
+
+Bom teste! 🎉
