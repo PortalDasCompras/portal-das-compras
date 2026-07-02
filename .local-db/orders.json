@@ -1,0 +1,30 @@
+[
+  {
+    "customerName": "João Silva Teste",
+    "customerEmail": "joao.teste@example.com",
+    "customerPhone": "11987654321",
+    "customerCpf": "12345678901",
+    "addressCep": "01310100",
+    "addressStreet": "Avenida Paulista",
+    "addressNumber": "1000",
+    "addressComplement": "Apto 101",
+    "addressNeighborhood": "Bela Vista",
+    "addressCity": "São Paulo",
+    "addressState": "SP",
+    "items": [
+      {
+        "productId": 1,
+        "name": "Mochila Impermeável",
+        "price": 89.9,
+        "quantity": 1,
+        "image": "https://example.com/mochila.jpg"
+      }
+    ],
+    "total": 109.8,
+    "status": "pendente",
+    "paymentMethod": "pix",
+    "id": 1,
+    "createdAt": "2026-07-02T18:33:32.944Z",
+    "updatedAt": "2026-07-02T18:33:32.944Z"
+  }
+]
