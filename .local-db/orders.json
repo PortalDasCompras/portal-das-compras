@@ -26,5 +26,32 @@
     "id": 1,
     "createdAt": "2026-07-02T18:33:32.944Z",
     "updatedAt": "2026-07-02T18:33:32.944Z"
+  },
+  {
+    "customerName": "Claysson Souza",
+    "customerEmail": "sclaysson8@gmail.com",
+    "customerPhone": "31975348869",
+    "customerCpf": "13552714600",
+    "addressCep": "35545000",
+    "addressStreet": "geraldo narciso",
+    "addressNumber": "45",
+    "addressNeighborhood": "santo agostinho",
+    "addressCity": "Perdigão",
+    "addressState": "MG",
+    "items": [
+      {
+        "productId": 1,
+        "name": "Blusa Moletom Feminina Básica Premium",
+        "price": 139.9,
+        "quantity": 1,
+        "image": "https://via.placeholder.com/400x400?text=Blusa+Moletom"
+      }
+    ],
+    "total": 159.8,
+    "status": "pendente",
+    "paymentMethod": "pix",
+    "id": 2,
+    "createdAt": "2026-07-02T20:38:06.132Z",
+    "updatedAt": "2026-07-02T20:38:06.132Z"
   }
 ]
