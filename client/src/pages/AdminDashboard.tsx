@@ -37,6 +37,7 @@ export default function AdminDashboard() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<ProductForm>(emptyForm);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; name: string } | null>(null);
   const { logout } = useAdmin();
   const [, navigate] = useLocation();
 
@@ -87,6 +88,11 @@ export default function AdminDashboard() {
   const handleLogout = async () => {
     await logout();
     navigate("/admin");
+  };
+
+  const handleDelete = async (id: number) => {
+    await deleteMutation.mutateAsync({ id });
+    setDeleteConfirm(null);
   };
 
   // Gerar dados de vendas
@@ -433,10 +439,10 @@ export default function AdminDashboard() {
                           <td className="px-4 py-3"><span className={`text-xs font-semibold px-2 py-1 rounded-full ${p.active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>{p.active ? "Ativo" : "Inativo"}</span></td>
                           <td className="px-4 py-3 text-right">
                             <div className="flex items-center justify-end gap-2">
-                              <button onClick={() => handleEdit(p)} className="text-blue-600 hover:text-blue-700 transition-colors">
+                              <button onClick={() => handleEdit(p)} className="text-blue-600 hover:text-blue-700 transition-colors" title="Editar produto">
                                 <Edit2 className="w-4 h-4" />
                               </button>
-                              <button onClick={() => deleteMutation.mutate({ id: p.id })} className="text-red-600 hover:text-red-700 transition-colors">
+                              <button onClick={() => setDeleteConfirm({ id: p.id, name: p.name })} className="text-red-600 hover:text-red-700 transition-colors" title="Deletar produto">
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
@@ -448,6 +454,34 @@ export default function AdminDashboard() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {deleteConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
+              <div className="p-6">
+                <h3 className="font-bold text-gray-900 text-lg mb-2">Deletar Produto?</h3>
+                <p className="text-gray-600 mb-6">Tem certeza que deseja deletar <strong>{deleteConfirm.name}</strong>? Esta acao nao pode ser desfeita.</p>
+                <div className="flex gap-3 justify-end">
+                  <button
+                    onClick={() => setDeleteConfirm(null)}
+                    className="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={() => handleDelete(deleteConfirm.id)}
+                    disabled={deleteMutation.isPending}
+                    className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 transition-colors flex items-center gap-2"
+                  >
+                    {deleteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                    {deleteMutation.isPending ? "Deletando..." : "Deletar"}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 

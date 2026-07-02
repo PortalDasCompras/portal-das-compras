@@ -11,6 +11,7 @@ import StoreLayout from "./components/StoreLayout";
 import AdminRoute from "./components/AdminRoute";
 
 import Home from "./pages/Home";
+import TodosProdutos from "./pages/TodosProdutos";
 import Categorias from "./pages/Categorias";
 import Categoria from "./pages/Categoria";
 import Produto from "./pages/Produto";
@@ -27,6 +28,9 @@ function Router() {
       {/* Store pages with layout */}
       <Route path="/">
         <StoreLayout><Home /></StoreLayout>
+      </Route>
+      <Route path="/todos-produtos">
+        <StoreLayout><TodosProdutos /></StoreLayout>
       </Route>
       <Route path="/categorias">
         <StoreLayout><Categorias /></StoreLayout>

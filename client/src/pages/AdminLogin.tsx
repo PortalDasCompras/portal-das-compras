@@ -42,6 +42,13 @@ export default function AdminLogin() {
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+          {/* Dica de credenciais */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+            <p className="text-xs text-blue-700 font-medium">📝 Credenciais de teste:</p>
+            <p className="text-xs text-blue-600 mt-1"><strong>Usuário:</strong> claysson</p>
+            <p className="text-xs text-blue-600"><strong>Senha:</strong> 1508</p>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Usuário</label>
