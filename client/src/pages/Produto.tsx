@@ -133,13 +133,14 @@ export default function Produto() {
             </button>
 
             {/* Video */}
-            <div className="relative bg-black rounded-xl overflow-hidden aspect-video">
+            <div className="relative bg-black rounded-xl overflow-hidden w-full">
               <video
-                className="w-full h-full object-cover"
+                className="w-full h-auto object-contain"
                 autoPlay
                 loop
                 muted={muted}
                 playsInline
+                preload="auto"
               >
                 <source src="https://portaldascompra.lovable.app/__l5e/assets-v1/095cedc1-f0ac-495f-b1d2-193c8179ce3f/ugc-product.mp4" type="video/mp4" />
                 Seu navegador não suporta vídeos HTML5.
