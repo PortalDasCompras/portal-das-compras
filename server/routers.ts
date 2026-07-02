@@ -14,8 +14,11 @@ import {
   upsertUser, getUserByOpenId,
 } from "./db";
 
-const ADMIN_USERNAME = "claysson";
-const ADMIN_PASSWORD = "1508";
+// Admin credentials - pode usar qualquer um desses
+const ADMIN_CREDENTIALS = [
+  { username: "admin", password: "admin123" },
+  { username: "claysson", password: "1508" },
+];
 
 // Admin middleware
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -41,7 +44,10 @@ export const appRouter = router({
     login: publicProcedure
       .input(z.object({ username: z.string(), password: z.string() }))
       .mutation(async ({ input, ctx }) => {
-        if (input.username !== ADMIN_USERNAME || input.password !== ADMIN_PASSWORD) {
+        const isValidAdmin = ADMIN_CREDENTIALS.some(
+          cred => cred.username === input.username && cred.password === input.password
+        );
+        if (!isValidAdmin) {
           throw new TRPCError({ code: "UNAUTHORIZED", message: "Credenciais inválidas" });
         }
         const token = nanoid(64);

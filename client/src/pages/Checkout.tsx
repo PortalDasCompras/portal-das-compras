@@ -152,7 +152,7 @@ export default function Checkout() {
         customerCpf: form.customerCpf.replace(/\D/g, ""),
         amount: total,
         paymentMethod: form.paymentMethod as "pix" | "boleto" | "credit_card",
-        cardData: form.paymentMethod === "cartao" ? {
+        cardData: form.paymentMethod === "credit_card" ? {
           cardNumber: cardData.cardNumber,
           cardholderName: cardData.cardholderName,
           expirationMonth: parseInt(cardData.expirationMonth) || 0,

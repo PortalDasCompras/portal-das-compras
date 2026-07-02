@@ -88,6 +88,31 @@ export async function processPayment(data: PaymentData): Promise<PaymentResponse
     };
   }
 
+  // Validar dados obrigatórios
+  if (!data.customerEmail || !data.customerName || !data.customerPhone || !data.customerCpf) {
+    return {
+      success: false,
+      error: "Dados do comprador incompletos. Verifique nome, e-mail, telefone e CPF.",
+    };
+  }
+
+  // Validar formato de CPF (11 dígitos)
+  if (data.customerCpf.replace(/\D/g, "").length !== 11) {
+    return {
+      success: false,
+      error: "CPF inválido. Deve conter 11 dígitos.",
+    };
+  }
+
+  // Validar formato de telefone (10-11 dígitos)
+  const phoneDigits = data.customerPhone.replace(/\D/g, "");
+  if (phoneDigits.length < 10 || phoneDigits.length > 11) {
+    return {
+      success: false,
+      error: "Telefone inválido. Deve conter entre 10 e 11 dígitos.",
+    };
+  }
+
   try {
     const paymentPayload: any = {
       transaction_amount: data.amount,
