@@ -45,6 +45,8 @@ export default function Checkout() {
   const [cepSuccess, setCepSuccess] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
+  const [paymentData, setPaymentData] = useState<any>(null);
+  const [showPaymentResult, setShowPaymentResult] = useState(false);
 
   const createOrder = trpc.orders.create.useMutation();
   const processPaymentMutation = trpc.orders.processPayment.useMutation();
@@ -112,7 +114,7 @@ export default function Checkout() {
     if (!form.addressNeighborhood.trim()) newErrors.addressNeighborhood = "Bairro obrigatório";
     if (!form.addressCity.trim()) newErrors.addressCity = "Cidade obrigatória";
     if (!form.addressState.trim()) newErrors.addressState = "Estado obrigatório";
-    if (form.paymentMethod === "credit_card" && !validateCard()) return false;
+    if ((form.paymentMethod === "credit_card" || form.paymentMethod === "cartao") && !validateCard()) return false;
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -160,9 +162,13 @@ export default function Checkout() {
       });
 
       if (paymentResult.success) {
+        setPaymentData(paymentResult);
+        setShowPaymentResult(true);
         clearCart();
         toast.success("Pagamento processado com sucesso!");
-        navigate("/pedido-confirmado");
+        setTimeout(() => {
+          navigate("/pedido-confirmado");
+        }, 3000);
       } else {
         toast.error(paymentResult.error || "Erro ao processar pagamento");
       }
@@ -171,6 +177,44 @@ export default function Checkout() {
       toast.error("Erro ao finalizar pedido. Tente novamente.");
     }
   };
+
+  if (showPaymentResult && paymentData) {
+    return (
+      <div className="container py-16 max-w-2xl">
+        <div className="bg-green-50 border border-green-200 rounded-2xl p-8 text-center">
+          <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Pagamento Processado!</h1>
+          <p className="text-gray-600 mb-6">Seu pedido foi criado com sucesso.</p>
+          
+          {paymentData.pixQrCode && (
+            <div className="bg-white rounded-lg p-6 mb-6">
+              <h2 className="font-bold text-gray-900 mb-4">Código PIX</h2>
+              <img src={paymentData.pixQrCode} alt="PIX QR Code" className="w-64 h-64 mx-auto mb-4" />
+              {paymentData.pixCopyPaste && (
+                <div>
+                  <p className="text-sm text-gray-600 mb-2">Ou copie e cole:</p>
+                  <input type="text" value={paymentData.pixCopyPaste} readOnly className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs" />
+                </div>
+              )}
+            </div>
+          )}
+          
+          {paymentData.barcodeNumber && (
+            <div className="bg-white rounded-lg p-6 mb-6">
+              <h2 className="font-bold text-gray-900 mb-4">Código de Barras</h2>
+              {paymentData.barcodePicture && (
+                <img src={paymentData.barcodePicture} alt="Boleto" className="w-full mb-4" />
+              )}
+              <p className="text-sm text-gray-600 mb-2">Número:</p>
+              <input type="text" value={paymentData.barcodeNumber} readOnly className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs" />
+            </div>
+          )}
+          
+          <p className="text-sm text-gray-600">Redirecionando para confirmação em 3 segundos...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (items.length === 0) {
     return (
@@ -366,7 +410,7 @@ export default function Checkout() {
                 {[
                   { value: "pix", label: "PIX", desc: "Aprovação imediata" },
                   { value: "boleto", label: "Boleto", desc: "Vence em 3 dias" },
-                  { value: "cartao", label: "Cartão", desc: "Até 12x sem juros" },
+                  { value: "credit_card", label: "Cartão", desc: "Até 12x sem juros" },
                 ].map(opt => (
                   <label
                     key={opt.value}
@@ -391,7 +435,7 @@ export default function Checkout() {
               </div>
               
               {/* Formulário de Cartão */}
-              {form.paymentMethod === "cartao" && (
+              {(form.paymentMethod === "cartao" || form.paymentMethod === "credit_card") && (
                 <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
                   <h3 className="font-semibold text-gray-900 mb-3">Dados do cartão</h3>
                   <div className="space-y-3">

@@ -48,9 +48,9 @@
 
 
 ## Integração Mercado Pago (Checkout Transparente)
-- [ ] Criar helper para processar pagamentos com Mercado Pago SDK
-- [ ] Implementar formulário de cartão de crédito no checkout
-- [ ] Integrar PIX com geração de QR Code
-- [ ] Integrar boleto com código de barras
-- [ ] Adicionar validações e tratamento de erros
-- [ ] Testar fluxo completo de pagamento
+- [x] Criar helper para processar pagamentos com Mercado Pago SDK
+- [x] Implementar formulário de cartão de crédito no checkout
+- [x] Integrar PIX com geração de QR Code
+- [x] Integrar boleto com código de barras
+- [x] Adicionar validações e tratamento de erros
+- [x] Testar fluxo completo de pagamento
