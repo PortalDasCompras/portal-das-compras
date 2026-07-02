@@ -45,7 +45,7 @@ export default function Produto() {
     if (!autoPlayReviews) return;
     const interval = setInterval(() => {
       setReviewIndex((prev) => (prev + 1) % REVIEWS.length);
-    }, 5000); // Muda a cada 5 segundos
+    }, 2000); // Muda a cada 2 segundos
     return () => clearInterval(interval);
   }, [autoPlayReviews]);
 
@@ -84,15 +84,11 @@ export default function Produto() {
   const categoryLabel = CATEGORY_LABELS[product.category] ?? product.category;
 
   const nextReview = () => {
-    setAutoPlayReviews(false);
     setReviewIndex((prev) => (prev + 1) % REVIEWS.length);
-    setTimeout(() => setAutoPlayReviews(true), 10000); // Retoma auto-play após 10s
   };
 
   const prevReview = () => {
-    setAutoPlayReviews(false);
     setReviewIndex((prev) => (prev - 1 + REVIEWS.length) % REVIEWS.length);
-    setTimeout(() => setAutoPlayReviews(true), 10000); // Retoma auto-play após 10s
   };
 
   const visibleReviews = [REVIEWS[reviewIndex]];
@@ -164,7 +160,8 @@ export default function Produto() {
                 loop
                 muted={muted}
                 playsInline
-                preload="auto"
+                preload="metadata"
+                poster="https://portaldascompra.lovable.app/__l5e/assets-v1/095cedc1-f0ac-495f-b1d2-193c8179ce3f/ugc-product.mp4?t=0"
               >
                 <source src="https://portaldascompra.lovable.app/__l5e/assets-v1/095cedc1-f0ac-495f-b1d2-193c8179ce3f/ugc-product.mp4" type="video/mp4" />
                 Seu navegador não suporta vídeos HTML5.
@@ -193,7 +190,7 @@ export default function Produto() {
         )}
 
         {/* Reviews Carousel */}
-        <div className="bg-white rounded-2xl p-6 mt-6 shadow-sm border border-gray-100">
+        <div className="mt-8">
           <div className="flex items-center gap-3 mb-6">
             <h2 className="text-lg font-bold text-gray-900">Avaliações de clientes</h2>
             <div className="flex items-center gap-1">
@@ -207,46 +204,28 @@ export default function Produto() {
             </div>
           </div>
 
-          <div className="relative">
-            <div className="overflow-hidden">
-              <div className="flex gap-4 transition-transform duration-300" style={{ transform: `translateX(-${reviewIndex * 100}%)` }}>
-                {REVIEWS.map((review, i) => (
-                  <div key={i} className="flex-shrink-0 w-full md:w-1/2 border border-gray-100 rounded-xl p-4">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-9 h-9 rounded-full bg-red-100 text-red-700 font-bold text-sm flex items-center justify-center flex-shrink-0">
-                        {review.initials}
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-gray-800">{review.name}</p>
-                        <p className="text-xs text-gray-400">{review.city} · {review.time}</p>
-                      </div>
-                      <div className="ml-auto flex">
-                        {Array.from({ length: review.rating }).map((_, j) => (
-                          <Star key={j} className="w-3 h-3 fill-amber-400 text-amber-400" />
-                        ))}
-                      </div>
+          <div className="overflow-hidden">
+            <div className="flex gap-4 transition-transform duration-500" style={{ transform: `translateX(-${reviewIndex * 100}%)` }}>
+              {REVIEWS.map((review, i) => (
+                <div key={i} className="flex-shrink-0 w-full md:w-1/2 bg-white rounded-xl p-5 border border-gray-100">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-full bg-red-100 text-red-700 font-bold text-sm flex items-center justify-center flex-shrink-0">
+                      {review.initials}
                     </div>
-                    <p className="text-sm text-gray-600 leading-relaxed">{review.text}</p>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-gray-800">{review.name}</p>
+                      <p className="text-xs text-gray-400">{review.city} · {review.time}</p>
+                    </div>
+                    <div className="flex">
+                      {Array.from({ length: review.rating }).map((_, j) => (
+                        <Star key={j} className="w-3 h-3 fill-amber-400 text-amber-400" />
+                      ))}
+                    </div>
                   </div>
-                ))}
-              </div>
+                  <p className="text-sm text-gray-600 leading-relaxed">{review.text}</p>
+                </div>
+              ))}
             </div>
-
-            {/* Carousel Controls */}
-            <button
-              onClick={prevReview}
-              className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 bg-red-600 hover:bg-red-700 text-white p-2.5 rounded-full transition-colors z-10 shadow-lg"
-              aria-label="Avaliação anterior"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <button
-              onClick={nextReview}
-              className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 bg-red-600 hover:bg-red-700 text-white p-2.5 rounded-full transition-colors z-10 shadow-lg"
-              aria-label="Próxima avaliação"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
           </div>
 
           {/* Carousel Indicators */}
