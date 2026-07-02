@@ -1,10 +1,10 @@
 import { useState, useMemo } from "react";
-import { Search } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import ProductCard from "@/components/ProductCard";
 
 const CATEGORIES = [
-  { slug: "todos", label: "Todos" },
   { slug: "beleza", label: "Beleza" },
   { slug: "casa", label: "Casa" },
   { slug: "eletronicos", label: "Eletrônicos" },
@@ -13,24 +13,107 @@ const CATEGORIES = [
   { slug: "outros", label: "Outros" },
 ];
 
+const BANNERS = [
+  {
+    id: 1,
+    title: "Desconto em Eletrônicos",
+    subtitle: "Até 50% OFF",
+    bg: "bg-gradient-to-r from-blue-600 to-blue-400",
+    image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=1200&h=300&fit=crop"
+  },
+  {
+    id: 2,
+    title: "Moda Sustentável",
+    subtitle: "Coleção Nova",
+    bg: "bg-gradient-to-r from-purple-600 to-pink-400",
+    image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200&h=300&fit=crop"
+  }
+];
+
+function CarouselSection({ title, products, categorySlug }: { title: string; products: any[]; categorySlug: string }) {
+  const [scrollPos, setScrollPos] = useState(0);
+
+  const scroll = (direction: "left" | "right") => {
+    const container = document.getElementById(`carousel-${categorySlug}`);
+    if (!container) return;
+    const scrollAmount = 300;
+    const newPos = direction === "left" ? scrollPos - scrollAmount : scrollPos + scrollAmount;
+    container.scrollLeft = newPos;
+    setScrollPos(newPos);
+  };
+
+  return (
+    <div className="mb-12">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-bold text-gray-900">{title}</h2>
+        <Link href={`/categoria/${categorySlug}`} className="text-sm text-red-600 hover:text-red-700 font-medium">
+          Ver todos →
+        </Link>
+      </div>
+      <div className="relative">
+        <div
+          id={`carousel-${categorySlug}`}
+          className="flex gap-4 overflow-x-auto scroll-smooth pb-2"
+          style={{ scrollBehavior: "smooth" }}
+        >
+          {products.slice(0, 5).map(product => (
+            <div key={product.id} className="flex-shrink-0 w-48">
+              <ProductCard
+                id={product.id}
+                name={product.name}
+                price={product.price}
+                originalPrice={product.originalPrice}
+                image={product.image}
+              />
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={() => scroll("left")}
+          className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 bg-red-600 hover:bg-red-700 text-white p-2 rounded-full transition-colors z-10"
+          aria-label="Anterior"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+        <button
+          onClick={() => scroll("right")}
+          className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 bg-red-600 hover:bg-red-700 text-white p-2 rounded-full transition-colors z-10"
+          aria-label="Próximo"
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const [search, setSearch] = useState("");
-  const [activeCategory, setActiveCategory] = useState("todos");
 
-  const { data: products = [], isLoading } = trpc.products.list.useQuery(
-    { category: activeCategory, search: activeCategory === "todos" ? search : undefined },
+  const { data: allProducts = [] } = trpc.products.list.useQuery(
+    { category: "todos" },
     { refetchOnWindowFocus: false }
   );
 
-  const filtered = useMemo(() => {
-    if (!search || activeCategory !== "todos") return products;
-    return products.filter(p =>
-      p.name.toLowerCase().includes(search.toLowerCase())
-    );
-  }, [products, search, activeCategory]);
+  // Agrupar produtos por categoria
+  const productsByCategory = useMemo(() => {
+    const grouped: Record<string, any[]> = {};
+    CATEGORIES.forEach(cat => {
+      grouped[cat.slug] = allProducts.filter(p => p.category === cat.slug);
+    });
+    return grouped;
+  }, [allProducts]);
+
+  // Mais vendidos (primeiros 5)
+  const topSelling = allProducts.slice(0, 5);
+
+  const handleSearch = (value: string) => {
+    setSearch(value);
+    // Aqui você poderia adicionar lógica de busca se necessário
+  };
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "oklch(0.97 0.005 80)" }}>
+    <div className="min-h-screen bg-gray-50">
       {/* Hero */}
       <section className="bg-white border-b border-gray-100 py-12 md:py-16">
         <div className="container text-center">
@@ -48,70 +131,53 @@ export default function Home() {
               type="text"
               placeholder="Buscar produtos..."
               value={search}
-              onChange={e => { setSearch(e.target.value); setActiveCategory("todos"); }}
+              onChange={e => handleSearch(e.target.value)}
               className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent bg-gray-50"
             />
           </div>
         </div>
       </section>
 
-      {/* Category Filters */}
-      <div className="container pt-6">
-        <div className="flex flex-wrap gap-2">
-          {CATEGORIES.map(cat => (
-            <button
-              key={cat.slug}
-              onClick={() => { setActiveCategory(cat.slug); setSearch(""); }}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all duration-150 ${
-                activeCategory === cat.slug
-                  ? "bg-red-600 text-white border-red-600 shadow-sm"
-                  : "bg-white text-gray-600 border-gray-200 hover:border-red-300 hover:text-red-600"
-              }`}
-            >
-              {cat.label}
-            </button>
+      <div className="container py-12">
+        {/* Top Banner */}
+        <div className="mb-12 rounded-2xl overflow-hidden shadow-lg">
+          <div className={`${BANNERS[0].bg} h-48 md:h-64 flex items-center justify-center text-center text-white p-6`}>
+            <div>
+              <h2 className="text-3xl md:text-4xl font-bold mb-2">{BANNERS[0].title}</h2>
+              <p className="text-lg md:text-2xl opacity-90">{BANNERS[0].subtitle}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Mais Vendidos Carousel */}
+        {topSelling.length > 0 && (
+          <CarouselSection title="🔥 Mais Vendidos" products={topSelling} categorySlug="top" />
+        )}
+
+        {/* Middle Banner */}
+        <div className="mb-12 rounded-2xl overflow-hidden shadow-lg">
+          <div className={`${BANNERS[1].bg} h-48 md:h-64 flex items-center justify-center text-center text-white p-6`}>
+            <div>
+              <h2 className="text-3xl md:text-4xl font-bold mb-2">{BANNERS[1].title}</h2>
+              <p className="text-lg md:text-2xl opacity-90">{BANNERS[1].subtitle}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Categories with Carousels */}
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-8">Todas as Categorias</h2>
+          {CATEGORIES.map(category => (
+            productsByCategory[category.slug]?.length > 0 && (
+              <CarouselSection
+                key={category.slug}
+                title={category.label}
+                products={productsByCategory[category.slug]}
+                categorySlug={category.slug}
+              />
+            )
           ))}
         </div>
-      </div>
-
-      {/* Products Grid */}
-      <div className="container py-6">
-        {isLoading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="bg-white rounded-xl overflow-hidden border border-gray-100 animate-pulse">
-                <div className="aspect-square bg-gray-200" />
-                <div className="p-3 space-y-2">
-                  <div className="h-4 bg-gray-200 rounded w-3/4" />
-                  <div className="h-3 bg-gray-200 rounded w-1/2" />
-                  <div className="h-5 bg-gray-200 rounded w-2/3" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-16 text-gray-400">
-            <Search className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p className="text-lg font-medium">Nenhum produto encontrado</p>
-            <p className="text-sm mt-1">Tente outro termo ou categoria</p>
-          </div>
-        ) : (
-          <>
-            <p className="text-sm text-gray-500 mb-4">{filtered.length} produto{filtered.length !== 1 ? "s" : ""}</p>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {filtered.map(product => (
-                <ProductCard
-                  key={product.id}
-                  id={product.id}
-                  name={product.name}
-                  price={product.price}
-                  originalPrice={product.originalPrice}
-                  image={product.image}
-                />
-              ))}
-            </div>
-          </>
-        )}
       </div>
     </div>
   );

@@ -155,13 +155,17 @@ export default function Produto() {
                 <source src="https://portaldascompra.lovable.app/__l5e/assets-v1/095cedc1-f0ac-495f-b1d2-193c8179ce3f/ugc-product.mp4" type="video/mp4" />
                 Seu navegador não suporta vídeos HTML5.
               </video>
-              <button
-                onClick={() => setMuted(!muted)}
-                className="absolute bottom-3 right-3 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white p-2 rounded-full transition-colors z-10"
-                aria-label={muted ? "Ativar som" : "Desativar som"}
-              >
-                {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-              </button>
+              {muted && (
+                <button
+                  onClick={() => setMuted(false)}
+                  className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors group"
+                  aria-label="Ativar som"
+                >
+                  <div className="bg-white/90 group-hover:bg-white text-red-600 p-4 rounded-full transition-all transform group-hover:scale-110">
+                    <VolumeX className="w-8 h-8" />
+                  </div>
+                </button>
+              )}
             </div>
           </div>
         </div>
