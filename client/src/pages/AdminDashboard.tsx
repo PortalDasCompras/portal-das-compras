@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
-import { Package, ShoppingCart, Plus, Edit2, Trash2, X, Loader2, LogOut, ChevronDown, ShoppingBag, Save } from "lucide-react";
+import { Package, ShoppingCart, Plus, Edit2, Trash2, X, Loader2, LogOut, ShoppingBag, Save, BarChart3 } from "lucide-react";
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { trpc } from "@/lib/trpc";
 import { useAdmin } from "@/contexts/AdminContext";
 import { toast } from "sonner";
@@ -18,6 +19,8 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   cancelado: { label: "Cancelado", color: "bg-red-100 text-red-700" },
 };
 
+const COLORS = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#8b5cf6"];
+
 interface ProductForm {
   name: string; description: string; price: string; originalPrice: string;
   category: typeof CATEGORIES[number]; image: string; stock: number;
@@ -29,7 +32,8 @@ const emptyForm: ProductForm = {
 };
 
 export default function AdminDashboard() {
-  const [tab, setTab] = useState<"products" | "orders">("products");
+  const [tab, setTab] = useState<"products" | "orders" | "reports">("products");
+  const [reportPeriod, setReportPeriod] = useState<"day" | "week" | "month">("month");
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<ProductForm>(emptyForm);
@@ -38,7 +42,7 @@ export default function AdminDashboard() {
 
   const utils = trpc.useUtils();
   const { data: products = [], isLoading: loadingProducts } = trpc.products.listAdmin.useQuery(undefined, { refetchOnWindowFocus: false });
-  const { data: orders = [], isLoading: loadingOrders } = trpc.orders.list.useQuery(undefined, { refetchOnWindowFocus: false, enabled: tab === "orders" });
+  const { data: orders = [], isLoading: loadingOrders } = trpc.orders.list.useQuery(undefined, { refetchOnWindowFocus: false, enabled: tab === "orders" || tab === "reports" });
 
   const createMutation = trpc.products.create.useMutation({
     onSuccess: () => { utils.products.listAdmin.invalidate(); toast.success("Produto criado!"); resetForm(); },
@@ -85,6 +89,88 @@ export default function AdminDashboard() {
     navigate("/admin");
   };
 
+  // Gerar dados de vendas
+  const salesData = useMemo(() => {
+    const now = new Date();
+    const data: Array<{ name: string; vendas: number; receita: number }> = [];
+
+    if (reportPeriod === "day") {
+      // Últimos 7 dias
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(now);
+        date.setDate(date.getDate() - i);
+        const dayOrders = orders.filter((o: any) => {
+          const orderDate = new Date(o.createdAt);
+          return orderDate.toDateString() === date.toDateString();
+        });
+        const total = dayOrders.reduce((sum: number, o: any) => sum + (o.total || 0), 0);
+        data.push({
+          name: date.toLocaleDateString("pt-BR", { weekday: "short", month: "short", day: "numeric" }),
+          vendas: dayOrders.length,
+          receita: Math.round(total * 100) / 100,
+        });
+      }
+    } else if (reportPeriod === "week") {
+      // Últimas 4 semanas
+      for (let i = 3; i >= 0; i--) {
+        const startDate = new Date(now);
+        startDate.setDate(startDate.getDate() - (i * 7 + 6));
+        const endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + 6);
+        const weekOrders = orders.filter((o: any) => {
+          const orderDate = new Date(o.createdAt);
+          return orderDate >= startDate && orderDate <= endDate;
+        });
+        const total = weekOrders.reduce((sum: number, o: any) => sum + (o.total || 0), 0);
+        data.push({
+          name: `Semana ${i + 1}`,
+          vendas: weekOrders.length,
+          receita: Math.round(total * 100) / 100,
+        });
+      }
+    } else {
+      // Últimos 12 meses
+      for (let i = 11; i >= 0; i--) {
+        const date = new Date(now);
+        date.setMonth(date.getMonth() - i);
+        const monthOrders = orders.filter((o: any) => {
+          const orderDate = new Date(o.createdAt);
+          return orderDate.getMonth() === date.getMonth() && orderDate.getFullYear() === date.getFullYear();
+        });
+        const total = monthOrders.reduce((sum: number, o: any) => sum + (o.total || 0), 0);
+        data.push({
+          name: date.toLocaleDateString("pt-BR", { month: "short" }),
+          vendas: monthOrders.length,
+          receita: Math.round(total * 100) / 100,
+        });
+      }
+    }
+    return data;
+  }, [orders, reportPeriod]);
+
+  // Dados por categoria
+  const categoryData = useMemo(() => {
+    return CATEGORIES.map(cat => {
+      const catOrders = orders.filter((o: any) => o.items?.some((item: any) => {
+        const product = products.find(p => p.id === item.productId);
+        return product?.category === cat;
+      }));
+      const total = catOrders.reduce((sum: number, o: any) => sum + (o.total || 0), 0);
+      return {
+        name: CATEGORY_LABELS[cat],
+        value: Math.round(total * 100) / 100,
+        count: catOrders.length,
+      };
+    }).filter(d => d.value > 0);
+  }, [orders, products]);
+
+  const totalRevenue = useMemo(() => {
+    return orders.reduce((sum: number, o: any) => sum + (o.total || 0), 0);
+  }, [orders]);
+
+  const totalOrders = orders.length;
+  const avgOrderValue = totalOrders > 0 ? Math.round((totalRevenue / totalOrders) * 100) / 100 : 0;
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Admin Header */}
@@ -116,33 +202,125 @@ export default function AdminDashboard() {
           </div>
           <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
             <p className="text-xs text-gray-500 mb-1">Pedidos</p>
-            <p className="text-2xl font-bold text-gray-900">{orders.length}</p>
+            <p className="text-2xl font-bold text-gray-900">{totalOrders}</p>
           </div>
           <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
-            <p className="text-xs text-gray-500 mb-1">Produtos Ativos</p>
-            <p className="text-2xl font-bold text-green-600">{products.filter(p => p.active).length}</p>
+            <p className="text-xs text-gray-500 mb-1">Receita Total</p>
+            <p className="text-2xl font-bold text-green-600">R$ {totalRevenue.toFixed(2)}</p>
           </div>
           <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
-            <p className="text-xs text-gray-500 mb-1">Pedidos Pendentes</p>
-            <p className="text-2xl font-bold text-yellow-600">{orders.filter((o: any) => o.status === "pendente").length}</p>
+            <p className="text-xs text-gray-500 mb-1">Ticket Médio</p>
+            <p className="text-2xl font-bold text-blue-600">R$ {avgOrderValue.toFixed(2)}</p>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit mb-6">
+        <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit mb-6 overflow-x-auto">
           <button
             onClick={() => setTab("products")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === "products" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${tab === "products" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
           >
             <Package className="w-4 h-4" /> Produtos
           </button>
           <button
             onClick={() => setTab("orders")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === "orders" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${tab === "orders" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
           >
             <ShoppingCart className="w-4 h-4" /> Pedidos
           </button>
+          <button
+            onClick={() => setTab("reports")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${tab === "reports" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+          >
+            <BarChart3 className="w-4 h-4" /> Relatórios
+          </button>
         </div>
+
+        {/* Reports Tab */}
+        {tab === "reports" && (
+          <div className="space-y-6">
+            {/* Period Selector */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => setReportPeriod("day")}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${reportPeriod === "day" ? "bg-red-600 text-white" : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"}`}
+              >
+                Por Dia
+              </button>
+              <button
+                onClick={() => setReportPeriod("week")}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${reportPeriod === "week" ? "bg-red-600 text-white" : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"}`}
+              >
+                Por Semana
+              </button>
+              <button
+                onClick={() => setReportPeriod("month")}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${reportPeriod === "month" ? "bg-red-600 text-white" : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"}`}
+              >
+                Por Mês
+              </button>
+            </div>
+
+            {/* Sales Chart */}
+            <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
+              <h3 className="font-bold text-gray-900 mb-4">Vendas e Receita</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={salesData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="name" stroke="#999" />
+                  <YAxis stroke="#999" />
+                  <Tooltip contentStyle={{ backgroundColor: "#fff", border: "1px solid #ccc", borderRadius: "8px" }} />
+                  <Legend />
+                  <Line type="monotone" dataKey="vendas" stroke="#ef4444" strokeWidth={2} name="Número de Vendas" />
+                  <Line type="monotone" dataKey="receita" stroke="#22c55e" strokeWidth={2} name="Receita (R$)" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Category Distribution */}
+            {categoryData.length > 0 && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
+                  <h3 className="font-bold text-gray-900 mb-4">Vendas por Categoria</h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={categoryData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, value }) => `${name}: R$ ${value}`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {categoryData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value) => `R$ ${value}`} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
+                  <h3 className="font-bold text-gray-900 mb-4">Top Categorias</h3>
+                  <div className="space-y-3">
+                    {categoryData.sort((a, b) => b.value - a.value).map((cat, i) => (
+                      <div key={i} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                          <span className="text-sm text-gray-700">{cat.name}</span>
+                        </div>
+                        <span className="text-sm font-semibold text-gray-900">R$ {cat.value.toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Products Tab */}
         {tab === "products" && (
@@ -248,27 +426,17 @@ export default function AdminDashboard() {
                     <tbody className="divide-y divide-gray-50">
                       {products.map((p: any) => (
                         <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-3">
-                              <img src={p.image} alt={p.name} className="w-10 h-10 object-cover rounded-lg bg-gray-100 flex-shrink-0" />
-                              <span className="font-medium text-gray-800 line-clamp-1 max-w-[200px]">{p.name}</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-gray-600">{CATEGORY_LABELS[p.category]}</td>
-                          <td className="px-4 py-3 font-semibold text-gray-900">R$ {parseFloat(p.price).toFixed(2).replace(".", ",")}</td>
-                          <td className="px-4 py-3 text-gray-600">{p.stock}</td>
-                          <td className="px-4 py-3">
-                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${p.active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
-                              {p.active ? "Ativo" : "Inativo"}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-3 text-sm text-gray-900 font-medium">{p.name}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{CATEGORY_LABELS[p.category]}</td>
+                          <td className="px-4 py-3 text-sm text-gray-900 font-semibold">R$ {parseFloat(p.price).toFixed(2)}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{p.stock}</td>
+                          <td className="px-4 py-3"><span className={`text-xs font-semibold px-2 py-1 rounded-full ${p.active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>{p.active ? "Ativo" : "Inativo"}</span></td>
+                          <td className="px-4 py-3 text-right">
                             <div className="flex items-center justify-end gap-2">
-                              <button onClick={() => handleEdit(p)} className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors rounded-md hover:bg-blue-50">
+                              <button onClick={() => handleEdit(p)} className="text-blue-600 hover:text-blue-700 transition-colors">
                                 <Edit2 className="w-4 h-4" />
                               </button>
-                              <button onClick={() => { if (confirm("Remover produto?")) deleteMutation.mutate({ id: p.id }); }}
-                                className="p-1.5 text-gray-400 hover:text-red-600 transition-colors rounded-md hover:bg-red-50">
+                              <button onClick={() => deleteMutation.mutate({ id: p.id })} className="text-red-600 hover:text-red-700 transition-colors">
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
@@ -286,15 +454,15 @@ export default function AdminDashboard() {
         {/* Orders Tab */}
         {tab === "orders" && (
           <div>
-            <h2 className="font-bold text-gray-900 mb-4">Pedidos</h2>
+            <h2 className="font-bold text-gray-900 mb-4">Gerenciar Pedidos</h2>
             {loadingOrders ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
               </div>
             ) : orders.length === 0 ? (
-              <div className="text-center py-16 text-gray-400">
-                <ShoppingCart className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p>Nenhum pedido ainda.</p>
+              <div className="bg-white rounded-xl border border-gray-100 p-12 text-center">
+                <ShoppingCart className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500">Nenhum pedido ainda</p>
               </div>
             ) : (
               <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
@@ -302,43 +470,34 @@ export default function AdminDashboard() {
                   <table className="w-full text-sm">
                     <thead className="bg-gray-50 border-b border-gray-100">
                       <tr>
-                        <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Pedido</th>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">ID</th>
                         <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Cliente</th>
                         <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Total</th>
-                        <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Data</th>
                         <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Data</th>
+                        <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Ação</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                      {orders.map((o: any) => {
-                        const statusInfo = STATUS_LABELS[o.status] ?? { label: o.status, color: "bg-gray-100 text-gray-600" };
-                        return (
-                          <tr key={o.id} className="hover:bg-gray-50 transition-colors">
-                            <td className="px-4 py-3 font-mono text-gray-600">#{String(o.id).padStart(4, "0")}</td>
-                            <td className="px-4 py-3">
-                              <div>
-                                <p className="font-medium text-gray-800">{o.customerName}</p>
-                                <p className="text-xs text-gray-400">{o.customerEmail}</p>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 font-semibold text-gray-900">R$ {parseFloat(o.total).toFixed(2).replace(".", ",")}</td>
-                            <td className="px-4 py-3 text-gray-500 text-xs">
-                              {new Date(o.createdAt).toLocaleDateString("pt-BR")}
-                            </td>
-                            <td className="px-4 py-3">
-                              <select
-                                value={o.status}
-                                onChange={e => updateStatusMutation.mutate({ id: o.id, status: e.target.value as any })}
-                                className={`text-xs px-2 py-1 rounded-full font-medium border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500 ${statusInfo.color}`}
-                              >
-                                {Object.entries(STATUS_LABELS).map(([val, info]) => (
-                                  <option key={val} value={val}>{info.label}</option>
-                                ))}
-                              </select>
-                            </td>
-                          </tr>
-                        );
-                      })}
+                      {orders.map((o: any) => (
+                        <tr key={o.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-3 text-sm text-gray-900 font-medium">#{o.id}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{o.customerName}</td>
+                          <td className="px-4 py-3 text-sm text-gray-900 font-semibold">R$ {(o.total || 0).toFixed(2)}</td>
+                          <td className="px-4 py-3"><span className={`text-xs font-semibold px-2 py-1 rounded-full ${STATUS_LABELS[o.status]?.color || "bg-gray-100 text-gray-600"}`}>{STATUS_LABELS[o.status]?.label || o.status}</span></td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{new Date(o.createdAt).toLocaleDateString("pt-BR")}</td>
+                          <td className="px-4 py-3 text-right">
+                            <select value={o.status} onChange={(e) => updateStatusMutation.mutate({ id: o.id, status: e.target.value as any })}
+                              className="text-xs px-2 py-1 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                              <option value="pendente">Pendente</option>
+                              <option value="processando">Processando</option>
+                              <option value="enviado">Enviado</option>
+                              <option value="entregue">Entregue</option>
+                              <option value="cancelado">Cancelado</option>
+                            </select>
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
