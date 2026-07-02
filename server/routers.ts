@@ -198,7 +198,7 @@ export const appRouter = router({
           image: z.string(),
         })),
         total: z.number(),
-        paymentMethod: z.string().optional(),
+        paymentMethod: z.enum(["pix", "boleto", "credit_card"]).optional(),
       }))
       .mutation(async ({ input }) => {
         const order = await createOrder({
@@ -214,7 +214,7 @@ export const appRouter = router({
           addressCity: input.addressCity,
           addressState: input.addressState,
           items: input.items as any,
-          total: input.total.toString() as any,
+          total: input.total,
           paymentMethod: input.paymentMethod ?? "pix",
         });
         

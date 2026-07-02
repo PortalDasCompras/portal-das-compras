@@ -46,7 +46,7 @@ export const orders = mysqlTable("orders", {
   addressCity: varchar("addressCity", { length: 100 }).notNull(),
   addressState: varchar("addressState", { length: 2 }).notNull(),
   items: json("items").notNull(),
-  total: decimal("total", { precision: 10, scale: 2 }).notNull(),
+  total: decimal("total", { precision: 10, scale: 2 }).notNull().$type<number>(),
   status: mysqlEnum("status", ["pendente", "processando", "enviado", "entregue", "cancelado"]).default("pendente").notNull(),
   paymentMethod: varchar("paymentMethod", { length: 50 }).default("pix").notNull(),
   paymentId: varchar("paymentId", { length: 255 }),

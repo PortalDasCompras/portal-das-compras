@@ -1,178 +1,367 @@
-import { eq, like, and, desc } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, products, orders, adminSessions, InsertProduct, InsertOrder } from "../drizzle/schema";
-import { ENV } from './_core/env';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { InsertUser, InsertProduct, InsertOrder } from "../drizzle/schema";
 
-let _db: ReturnType<typeof drizzle> | null = null;
+let _supabase: SupabaseClient | null = null;
 
 export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
+  if (!_supabase) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      const supabaseUrl = process.env.VITE_SUPABASE_URL;
+      const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      
+      if (!supabaseUrl || !serviceRoleKey) {
+        console.warn('[Database] Supabase credentials not configured');
+        return null;
+      }
+      
+      _supabase = createClient(supabaseUrl, serviceRoleKey, {
+        auth: { persistSession: false }
+      });
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
-      _db = null;
+      _supabase = null;
     }
   }
-  return _db;
+  return _supabase;
 }
 
-export async function upsertUser(user: InsertUser): Promise<void> {
-  if (!user.openId) throw new Error("User openId is required for upsert");
+export async function createOrder(data: any) {
   const db = await getDb();
-  if (!db) return;
+  if (!db) throw new Error("Database not available");
+  
   try {
-    const values: InsertUser = { openId: user.openId };
-    const updateSet: Record<string, unknown> = {};
-    const textFields = ["name", "email", "loginMethod"] as const;
-    type TextField = (typeof textFields)[number];
-    const assignNullable = (field: TextField) => {
-      const value = user[field];
-      if (value === undefined) return;
-      const normalized = value ?? null;
-      values[field] = normalized;
-      updateSet[field] = normalized;
+    const orderData = {
+      customer_name: data.customerName,
+      customer_email: data.customerEmail,
+      customer_phone: data.customerPhone,
+      customer_cpf: data.customerCpf,
+      address_cep: data.addressCep,
+      address_street: data.addressStreet,
+      address_number: data.addressNumber,
+      address_complement: data.addressComplement || null,
+      address_neighborhood: data.addressNeighborhood,
+      address_city: data.addressCity,
+      address_state: data.addressState,
+      items: JSON.stringify(data.items),
+      total: parseFloat(data.total),
+      payment_method: data.paymentMethod || null,
+      status: 'pending'
     };
-    textFields.forEach(assignNullable);
-    if (user.lastSignedIn !== undefined) {
-      values.lastSignedIn = user.lastSignedIn;
-      updateSet.lastSignedIn = user.lastSignedIn;
+
+    const { data: order, error } = await db
+      .from('orders')
+      .insert([orderData])
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('DB Error:', error);
+      throw error;
     }
-    if (user.role !== undefined) {
-      values.role = user.role;
-      updateSet.role = user.role;
-    } else if (user.openId === ENV.ownerOpenId) {
-      values.role = 'admin';
-      updateSet.role = 'admin';
-    }
-    if (!values.lastSignedIn) values.lastSignedIn = new Date();
-    if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = new Date();
-    await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
-  } catch (error) {
-    console.error("[Database] Failed to upsert user:", error);
+    return order || { id: 0 };
+  } catch (error: any) {
+    console.error('Erro ao inserir pedido:', error.message);
     throw error;
+  }
+}
+
+export async function getOrderById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  try {
+    const { data, error } = await db
+      .from('orders')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') throw error;
+    return data;
+  } catch (error) {
+    return undefined;
+  }
+}
+
+export async function updateOrderPayment(orderId: number, paymentData: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  try {
+    const updateData: any = {
+      updated_at: new Date().toISOString()
+    };
+    if (paymentData.paymentId) updateData.payment_id = paymentData.paymentId;
+    if (paymentData.paymentStatus) updateData.payment_status = paymentData.paymentStatus;
+    if (paymentData.pixQrCode) updateData.pix_qr_code = paymentData.pixQrCode;
+    if (paymentData.pixCopyPaste) updateData.pix_copy_paste = paymentData.pixCopyPaste;
+    if (paymentData.barcodeNumber) updateData.barcode_number = paymentData.barcodeNumber;
+    if (paymentData.barcodePicture) updateData.barcode_picture = paymentData.barcodePicture;
+
+    const { data, error } = await db
+      .from('orders')
+      .update(updateData)
+      .eq('id', orderId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  } catch (error: any) {
+    console.error('Erro ao atualizar pagamento:', error.message);
+    throw error;
+  }
+}
+
+export async function getAllOrders() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  try {
+    const { data, error } = await db
+      .from('orders')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    return [];
   }
 }
 
 export async function getUserByOpenId(openId: string) {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
-  return result.length > 0 ? result[0] : undefined;
-}
-
-// ─── Products ───────────────────────────────────────────────────────────────
-
-export async function getAllProducts(search?: string) {
-  const db = await getDb();
-  if (!db) return [];
-  if (search) {
-    return db.select().from(products)
-      .where(and(eq(products.active, true), like(products.name, `%${search}%`)))
-      .orderBy(desc(products.createdAt));
+  
+  try {
+    const { data, error } = await db
+      .from('users')
+      .select('*')
+      .eq('openId', openId)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') throw error;
+    return data;
+  } catch (error) {
+    return undefined;
   }
-  return db.select().from(products).where(eq(products.active, true)).orderBy(desc(products.createdAt));
-}
-
-export async function getProductsByCategory(category: string) {
-  const db = await getDb();
-  if (!db) return [];
-  return db.select().from(products)
-    .where(and(eq(products.active, true), eq(products.category, category as any)))
-    .orderBy(desc(products.createdAt));
-}
-
-export async function getProductById(id: number) {
-  const db = await getDb();
-  if (!db) return undefined;
-  const result = await db.select().from(products).where(eq(products.id, id)).limit(1);
-  return result.length > 0 ? result[0] : undefined;
-}
-
-export async function createProduct(data: InsertProduct) {
-  const db = await getDb();
-  if (!db) throw new Error("DB not available");
-  const result = await db.insert(products).values(data);
-  return result;
-}
-
-export async function updateProduct(id: number, data: Partial<InsertProduct>) {
-  const db = await getDb();
-  if (!db) throw new Error("DB not available");
-  await db.update(products).set(data).where(eq(products.id, id));
-}
-
-export async function deleteProduct(id: number) {
-  const db = await getDb();
-  if (!db) throw new Error("DB not available");
-  await db.update(products).set({ active: false }).where(eq(products.id, id));
-}
-
-export async function getAllProductsAdmin() {
-  const db = await getDb();
-  if (!db) return [];
-  return db.select().from(products).orderBy(desc(products.createdAt));
-}
-
-// ─── Orders ─────────────────────────────────────────────────────────────────
-
-export async function createOrder(data: InsertOrder) {
-  const db = await getDb();
-  if (!db) throw new Error("DB not available");
-  await db.insert(orders).values(data);
-  const result = await db.select().from(orders).orderBy(desc(orders.createdAt)).limit(1);
-  return result[0] || { id: 0 };
-}
-
-export async function getAllOrders() {
-  const db = await getDb();
-  if (!db) return [];
-  return db.select().from(orders).orderBy(desc(orders.createdAt));
-}
-
-export async function getOrderById(id: number) {
-  const db = await getDb();
-  if (!db) return undefined;
-  const result = await db.select().from(orders).where(eq(orders.id, id)).limit(1);
-  return result.length > 0 ? result[0] : undefined;
-}
-
-export async function updateOrderStatus(id: number, status: "pendente" | "processando" | "enviado" | "entregue" | "cancelado") {
-  const db = await getDb();
-  if (!db) throw new Error("DB not available");
-  await db.update(orders).set({ status }).where(eq(orders.id, id));
-}
-
-// ─── Admin Sessions ──────────────────────────────────────────────────────────
-
-export async function createAdminSession(token: string, expiresAt: Date) {
-  const db = await getDb();
-  if (!db) throw new Error("DB not available");
-  await db.insert(adminSessions).values({ token, expiresAt });
 }
 
 export async function getAdminSession(token: string) {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.select().from(adminSessions).where(eq(adminSessions.token, token)).limit(1);
-  return result.length > 0 ? result[0] : undefined;
+  
+  try {
+    const { data, error } = await db
+      .from('adminSessions')
+      .select('*')
+      .eq('token', token)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') throw error;
+    return data;
+  } catch (error) {
+    return undefined;
+  }
 }
 
 export async function deleteAdminSession(token: string) {
   const db = await getDb();
   if (!db) return;
-  await db.delete(adminSessions).where(eq(adminSessions.token, token));
+  
+  try {
+    await db
+      .from('adminSessions')
+      .delete()
+      .eq('token', token);
+  } catch (error) {
+    console.error('Erro ao deletar sessão:', error);
+  }
 }
 
-export async function updateOrderPayment(id: number, data: {
-  paymentId?: string;
-  paymentStatus?: string;
-  pixQrCode?: string;
-  pixCopyPaste?: string;
-  barcodeNumber?: string;
-  barcodePicture?: string;
-}) {
+export async function updateOrderStatus(orderId: number, status: string) {
   const db = await getDb();
-  if (!db) throw new Error("DB not available");
-  await db.update(orders).set(data).where(eq(orders.id, id));
+  if (!db) throw new Error("Database not available");
+  
+  try {
+    const { data, error } = await db
+      .from('orders')
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq('id', orderId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  } catch (error: any) {
+    console.error('Erro ao atualizar status:', error.message);
+    throw error;
+  }
+}
+
+export async function getAllProductsAdmin() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  try {
+    const { data, error } = await db
+      .from('products')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    return [];
+  }
+}
+
+export async function updateProduct(id: number, data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  try {
+    const { data: product, error } = await db
+      .from('products')
+      .update(data)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return product;
+  } catch (error: any) {
+    console.error('Erro ao atualizar produto:', error.message);
+    throw error;
+  }
+}
+
+export async function deleteProduct(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  try {
+    const { error } = await db
+      .from('products')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+  } catch (error: any) {
+    console.error('Erro ao deletar produto:', error.message);
+    throw error;
+  }
+}
+
+export async function createAdminSession(token: string, expiresAt: Date) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  try {
+    const { data, error } = await db
+      .from('adminSessions')
+      .insert([{ token, expiresAt }])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  } catch (error: any) {
+    console.error('Erro ao criar sessão:', error.message);
+    throw error;
+  }
+}
+
+export async function getAllProducts(search?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  try {
+    let query = db
+      .from('products')
+      .select('*');
+    
+    if (search) {
+      query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
+    }
+    
+    const { data, error } = await query
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    return [];
+  }
+}
+
+export async function getProductsByCategory(category: string) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  try {
+    const { data, error } = await db
+      .from('products')
+      .select('*')
+      .eq('category', category)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    return [];
+  }
+}
+
+export async function getProductById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  try {
+    const { data, error } = await db
+      .from('products')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') throw error;
+    return data;
+  } catch (error) {
+    return undefined;
+  }
+}
+
+export async function createProduct(data: InsertProduct) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  try {
+    const { data: product, error } = await db
+      .from('products')
+      .insert([data])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return product;
+  } catch (error: any) {
+    console.error('Erro ao criar produto:', error.message);
+    throw error;
+  }
+}
+
+export async function upsertUser(user: InsertUser): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  
+  try {
+    const { error } = await db
+      .from('users')
+      .upsert([user], { onConflict: 'openId' });
+    
+    if (error) throw error;
+  } catch (error) {
+    console.error('Erro ao fazer upsert de usuário:', error);
+  }
 }

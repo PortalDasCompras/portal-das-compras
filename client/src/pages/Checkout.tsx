@@ -158,7 +158,7 @@ export default function Checkout() {
         addressState: form.addressState,
         items: items.map(i => ({ productId: i.productId, name: i.name, price: i.price, quantity: i.quantity, image: i.image })),
         total,
-        paymentMethod: form.paymentMethod,
+        paymentMethod: form.paymentMethod as "pix" | "boleto" | "credit_card",
       });
 
       setPaymentProgress(50);
@@ -174,7 +174,7 @@ export default function Checkout() {
         customerCpf: form.customerCpf.replace(/\D/g, ""),
         amount: total,
         paymentMethod: form.paymentMethod as "pix" | "boleto" | "credit_card",
-        cardData: form.paymentMethod === "credit_card" ? {
+        cardData: (form.paymentMethod as string) === "credit_card" ? {
           cardNumber: cardData.cardNumber,
           cardholderName: cardData.cardholderName,
           expirationMonth: parseInt(cardData.expirationMonth) || 0,
