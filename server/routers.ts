@@ -2,14 +2,14 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { nanoid } from "nanoid";
 import { COOKIE_NAME } from "@shared/const";
-import { createMercadoPagoPreference } from "./mercadopago";
+import { processPayment } from "./mercadopago";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import {
   getAllProducts, getProductsByCategory, getProductById,
   createProduct, updateProduct, deleteProduct, getAllProductsAdmin,
-  createOrder, getAllOrders, getOrderById, updateOrderStatus,
+  createOrder, getAllOrders, getOrderById, updateOrderStatus, updateOrderPayment,
   createAdminSession, getAdminSession, deleteAdminSession,
   upsertUser, getUserByOpenId,
 } from "./db";
@@ -212,22 +212,11 @@ export const appRouter = router({
           paymentMethod: input.paymentMethod ?? "pix",
         });
         
-        try {
-          const preference = await createMercadoPagoPreference({
-            orderId: order.id,
-            customerName: input.customerName,
-            customerEmail: input.customerEmail,
-            total: input.total,
-            items: input.items.map(i => ({
-              title: i.name,
-              quantity: i.quantity,
-              unit_price: i.price,
-            })),
-          });
-          return { success: true, paymentUrl: preference.initPoint };
-        } catch (error) {
-          console.error("Erro ao criar preferencia Mercado Pago:", error);
-          return { success: true, paymentUrl: null };
+        return {
+          success: true,
+          orderId: order.id,
+          total: input.total,
+          paymentMethod: input.paymentMethod ?? "pix",
         }
       }),
 
@@ -251,6 +240,58 @@ export const appRouter = router({
         if (!session || new Date() > session.expiresAt) throw new TRPCError({ code: "UNAUTHORIZED" });
         await updateOrderStatus(input.id, input.status);
         return { success: true };
+      }),
+
+    processPayment: publicProcedure
+      .input(z.object({
+        orderId: z.number(),
+        customerName: z.string(),
+        customerEmail: z.string().email(),
+        customerPhone: z.string(),
+        customerCpf: z.string(),
+        amount: z.number(),
+        paymentMethod: z.enum(["pix", "boleto", "credit_card"]),
+        cardData: z.object({
+          cardNumber: z.string(),
+          cardholderName: z.string(),
+          expirationMonth: z.number(),
+          expirationYear: z.number(),
+          securityCode: z.string(),
+        }).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        try {
+          const result = await processPayment({
+            orderId: input.orderId,
+            customerName: input.customerName,
+            customerEmail: input.customerEmail,
+            customerPhone: input.customerPhone,
+            customerCpf: input.customerCpf,
+            amount: input.amount,
+            description: `Pedido #${input.orderId}`,
+            paymentMethod: input.paymentMethod,
+            cardData: input.cardData,
+          });
+
+          if (result.success) {
+            await updateOrderPayment(input.orderId, {
+              paymentId: result.paymentId,
+              paymentStatus: result.status,
+              pixQrCode: result.pixQrCode,
+              pixCopyPaste: result.pixCopyPaste,
+              barcodeNumber: result.barcodeNumber,
+              barcodePicture: result.barcodePicture,
+            });
+          }
+
+          return result;
+        } catch (error) {
+          console.error("Erro ao processar pagamento:", error);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Erro ao processar pagamento",
+          });
+        }
       }),
   }),
 });

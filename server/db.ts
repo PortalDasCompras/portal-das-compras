@@ -163,3 +163,16 @@ export async function deleteAdminSession(token: string) {
   if (!db) return;
   await db.delete(adminSessions).where(eq(adminSessions.token, token));
 }
+
+export async function updateOrderPayment(id: number, data: {
+  paymentId?: string;
+  paymentStatus?: string;
+  pixQrCode?: string;
+  pixCopyPaste?: string;
+  barcodeNumber?: string;
+  barcodePicture?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(orders).set(data).where(eq(orders.id, id));
+}

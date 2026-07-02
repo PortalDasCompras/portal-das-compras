@@ -49,6 +49,12 @@ export const orders = mysqlTable("orders", {
   total: decimal("total", { precision: 10, scale: 2 }).notNull(),
   status: mysqlEnum("status", ["pendente", "processando", "enviado", "entregue", "cancelado"]).default("pendente").notNull(),
   paymentMethod: varchar("paymentMethod", { length: 50 }).default("pix").notNull(),
+  paymentId: varchar("paymentId", { length: 255 }),
+  paymentStatus: varchar("paymentStatus", { length: 50 }),
+  pixQrCode: text("pixQrCode"),
+  pixCopyPaste: text("pixCopyPaste"),
+  barcodeNumber: varchar("barcodeNumber", { length: 255 }),
+  barcodePicture: text("barcodePicture"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

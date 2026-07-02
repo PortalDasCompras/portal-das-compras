@@ -8,4 +8,5 @@ export const ENV = {
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
   mercadopagoAccessToken: process.env.MERCADOPAGO_ACCESS_TOKEN ?? "",
+  mercadopagoPublicKey: process.env.VITE_MERCADOPAGO_PUBLIC_KEY ?? "",
 };

@@ -47,9 +47,10 @@
 - [x] Adicionar cookie-parser middleware para processar cookies do admin
 
 
-## Integração Mercado Pago (Checkout Redirect)
-- [x] Criar helper para gerar preferência de pagamento
-- [x] Adicionar endpoint tRPC para criar preferência
-- [x] Integrar redirecionamento no checkout
-- [x] Testar PIX, boleto e cartão
-- [x] Configurar URLs de retorno (sucesso/falha)
+## Integração Mercado Pago (Checkout Transparente)
+- [ ] Criar helper para processar pagamentos com Mercado Pago SDK
+- [ ] Implementar formulário de cartão de crédito no checkout
+- [ ] Integrar PIX com geração de QR Code
+- [ ] Integrar boleto com código de barras
+- [ ] Adicionar validações e tratamento de erros
+- [ ] Testar fluxo completo de pagamento

@@ -37,12 +37,17 @@ export default function Checkout() {
     addressCep: "", addressStreet: "", addressNumber: "", addressComplement: "",
     addressNeighborhood: "", addressCity: "", addressState: "", paymentMethod: "pix",
   });
+  const [cardData, setCardData] = useState({
+    cardNumber: "", cardholderName: "", expirationMonth: "", expirationYear: "", securityCode: "",
+  });
   const [cepLoading, setCepLoading] = useState(false);
   const [cepError, setCepError] = useState("");
   const [cepSuccess, setCepSuccess] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
 
   const createOrder = trpc.orders.create.useMutation();
+  const processPaymentMutation = trpc.orders.processPayment.useMutation();
 
   const shipping = totalPrice >= 150 ? 0 : 19.90;
   const total = totalPrice + shipping;
@@ -85,6 +90,16 @@ export default function Checkout() {
     if (errors[field]) setErrors(prev => ({ ...prev, [field]: "" }));
   };
 
+  const validateCard = () => {
+    const errors: Record<string, string> = {};
+    if (!cardData.cardNumber.replace(/\s/g, "").match(/^\d{13,19}$/)) errors.cardNumber = "Número inválido";
+    if (!cardData.cardholderName.trim()) errors.cardholderName = "Nome obrigatório";
+    if (!cardData.expirationMonth || !cardData.expirationYear) errors.expiration = "Validade obrigatória";
+    if (!cardData.securityCode.match(/^\d{3,4}$/)) errors.securityCode = "CVV inválido";
+    setCardErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const validate = () => {
     const newErrors: Record<string, string> = {};
     if (!form.customerName.trim()) newErrors.customerName = "Nome obrigatório";
@@ -97,6 +112,7 @@ export default function Checkout() {
     if (!form.addressNeighborhood.trim()) newErrors.addressNeighborhood = "Bairro obrigatório";
     if (!form.addressCity.trim()) newErrors.addressCity = "Cidade obrigatória";
     if (!form.addressState.trim()) newErrors.addressState = "Estado obrigatório";
+    if (form.paymentMethod === "credit_card" && !validateCard()) return false;
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -109,7 +125,7 @@ export default function Checkout() {
     }
 
     try {
-      const result = await createOrder.mutateAsync({
+      const orderResult = await createOrder.mutateAsync({
         customerName: form.customerName,
         customerEmail: form.customerEmail,
         customerPhone: form.customerPhone.replace(/\D/g, ""),
@@ -125,15 +141,33 @@ export default function Checkout() {
         total,
         paymentMethod: form.paymentMethod,
       });
-      
-      if (result.paymentUrl) {
+
+      const paymentResult = await processPaymentMutation.mutateAsync({
+        orderId: orderResult.orderId,
+        customerName: form.customerName,
+        customerEmail: form.customerEmail,
+        customerPhone: form.customerPhone.replace(/\D/g, ""),
+        customerCpf: form.customerCpf.replace(/\D/g, ""),
+        amount: total,
+        paymentMethod: form.paymentMethod as "pix" | "boleto" | "credit_card",
+        cardData: form.paymentMethod === "cartao" ? {
+          cardNumber: cardData.cardNumber,
+          cardholderName: cardData.cardholderName,
+          expirationMonth: parseInt(cardData.expirationMonth) || 0,
+          expirationYear: parseInt(cardData.expirationYear) || 0,
+          securityCode: cardData.securityCode,
+        } : undefined,
+      });
+
+      if (paymentResult.success) {
         clearCart();
-        window.location.href = result.paymentUrl;
-      } else {
-        clearCart();
+        toast.success("Pagamento processado com sucesso!");
         navigate("/pedido-confirmado");
+      } else {
+        toast.error(paymentResult.error || "Erro ao processar pagamento");
       }
     } catch (err) {
+      console.error("Erro ao finalizar pedido:", err);
       toast.error("Erro ao finalizar pedido. Tente novamente.");
     }
   };
@@ -355,6 +389,83 @@ export default function Checkout() {
                   </label>
                 ))}
               </div>
+              
+              {/* Formulário de Cartão */}
+              {form.paymentMethod === "cartao" && (
+                <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <h3 className="font-semibold text-gray-900 mb-3">Dados do cartão</h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Número do cartão *</label>
+                      <input
+                        type="text"
+                        value={cardData.cardNumber}
+                        onChange={e => setCardData(prev => ({ ...prev, cardNumber: e.target.value.replace(/\D/g, "").slice(0, 19) }))}
+                        placeholder="1234 5678 9012 3456"
+                        maxLength={19}
+                        className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 ${cardErrors.cardNumber ? "border-red-400" : "border-gray-200"}`}
+                      />
+                      {cardErrors.cardNumber && <p className="text-xs text-red-500 mt-1">{cardErrors.cardNumber}</p>}
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Validade *</label>
+                        <input
+                          type="text"
+                          value={`${cardData.expirationMonth}/${cardData.expirationYear}`}
+                          onChange={e => {
+                            const val = e.target.value.replace(/\D/g, "").slice(0, 4);
+                            if (val.length >= 2) {
+                              setCardData(prev => ({ ...prev, expirationMonth: val.slice(0, 2), expirationYear: val.slice(2) }));
+                            }
+                          }}
+                          placeholder="MM/YY"
+                          maxLength={5}
+                          className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 ${cardErrors.expiration ? "border-red-400" : "border-gray-200"}`}
+                        />
+                        {cardErrors.expiration && <p className="text-xs text-red-500 mt-1">{cardErrors.expiration}</p>}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">CVV *</label>
+                        <input
+                          type="text"
+                          value={cardData.securityCode}
+                          onChange={e => setCardData(prev => ({ ...prev, securityCode: e.target.value.replace(/\D/g, "").slice(0, 4) }))}
+                          placeholder="123"
+                          maxLength={4}
+                          className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 ${cardErrors.securityCode ? "border-red-400" : "border-gray-200"}`}
+                        />
+                        {cardErrors.securityCode && <p className="text-xs text-red-500 mt-1">{cardErrors.securityCode}</p>}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Nome do titular *</label>
+                      <input
+                        type="text"
+                        value={cardData.cardholderName}
+                        onChange={e => setCardData(prev => ({ ...prev, cardholderName: e.target.value.toUpperCase() }))}
+                        placeholder="NOME SOBRENOME"
+                        className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 ${cardErrors.cardholderName ? "border-red-400" : "border-gray-200"}`}
+                      />
+                      {cardErrors.cardholderName && <p className="text-xs text-red-500 mt-1">{cardErrors.cardholderName}</p>}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* PIX */}
+              {form.paymentMethod === "pix" && (
+                <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="text-sm text-blue-900">✓ Você receberá um QR Code para escanear com seu celular após confirmar o pedido.</p>
+                </div>
+              )}
+              
+              {/* Boleto */}
+              {form.paymentMethod === "boleto" && (
+                <div className="mt-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <p className="text-sm text-yellow-900">✓ Você receberá o código de barras para pagar em qualquer banco ou lotérica.</p>
+                </div>
+              )}
             </div>
           </div>
 

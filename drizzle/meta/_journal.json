@@ -15,6 +15,13 @@
       "when": 1782994618084,
       "tag": "0001_many_next_avengers",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1783005189395,
+      "tag": "0002_lovely_power_pack",
+      "breakpoints": true
     }
   ]
 }

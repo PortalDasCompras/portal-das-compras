@@ -1,74 +1,204 @@
 import { ENV } from "./_core/env";
 
-interface MercadoPagoPreferenceItem {
-  title: string;
-  quantity: number;
-  unit_price: number;
-}
-
-interface CreatePreferenceParams {
+interface PaymentData {
   orderId: number;
   customerName: string;
   customerEmail: string;
-  items: MercadoPagoPreferenceItem[];
-  total: number;
+  customerPhone: string;
+  customerCpf: string;
+  amount: number;
+  description: string;
+  paymentMethod: "pix" | "boleto" | "credit_card";
+  cardData?: {
+    cardNumber: string;
+    cardholderName: string;
+    expirationMonth: number;
+    expirationYear: number;
+    securityCode: string;
+  };
 }
 
-export async function createMercadoPagoPreference(params: CreatePreferenceParams) {
+interface PaymentResponse {
+  success: boolean;
+  paymentId?: string;
+  status?: string;
+  pixQrCode?: string;
+  pixCopyPaste?: string;
+  barcodeNumber?: string;
+  barcodePicture?: string;
+  error?: string;
+}
+
+/**
+ * Tokeniza dados do cartão usando a API de tokenização do Mercado Pago
+ */
+export async function tokenizeCard(cardData: {
+  cardNumber: string;
+  cardholderName: string;
+  expirationMonth: number;
+  expirationYear: number;
+  securityCode: string;
+}): Promise<string> {
+  const publicKey = ENV.mercadopagoPublicKey;
+  if (!publicKey) {
+    throw new Error("Mercado Pago Public Key não configurada");
+  }
+
+  try {
+    const response = await fetch("https://api.mercadopago.com/v1/card_tokens", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${publicKey}`,
+      },
+      body: JSON.stringify({
+        card_number: cardData.cardNumber.replace(/\s/g, ""),
+        cardholder: {
+          name: cardData.cardholderName,
+        },
+        expiration_month: cardData.expirationMonth,
+        expiration_year: cardData.expirationYear,
+        security_code: cardData.securityCode,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Erro ao tokenizar cartão");
+    }
+
+    const result = await response.json();
+    return result.id;
+  } catch (error) {
+    console.error("Erro ao tokenizar cartão:", error);
+    throw error;
+  }
+}
+
+/**
+ * Processa pagamento usando checkout transparente do Mercado Pago
+ */
+export async function processPayment(data: PaymentData): Promise<PaymentResponse> {
+  const accessToken = ENV.mercadopagoAccessToken;
+
+  if (!accessToken) {
+    return {
+      success: false,
+      error: "Mercado Pago Access Token não configurado",
+    };
+  }
+
+  try {
+    const paymentPayload: any = {
+      transaction_amount: data.amount,
+      description: data.description,
+      external_reference: `order_${data.orderId}`,
+      payer: {
+        email: data.customerEmail,
+        first_name: data.customerName.split(" ")[0],
+        last_name: data.customerName.split(" ").slice(1).join(" ") || ".",
+        phone: {
+          area_code: data.customerPhone.slice(0, 2),
+          number: data.customerPhone.slice(2),
+        },
+        identification: {
+          type: "CPF",
+          number: data.customerCpf,
+        },
+      },
+      payment_method_id: data.paymentMethod === "credit_card" ? "card" : data.paymentMethod,
+    };
+
+    // Adicionar dados específicos por método de pagamento
+    if (data.paymentMethod === "credit_card" && data.cardData) {
+      // Token do cartão deve ser gerado no frontend e enviado aqui
+      // Por enquanto, usamos um placeholder que será substituído
+      paymentPayload.token = data.cardData.cardNumber;
+      paymentPayload.installments = 1;
+      paymentPayload.statement_descriptor = "PORTAL COMPRAS";
+      paymentPayload.issuer_id = -1;
+    } else if (data.paymentMethod === "pix") {
+      // PIX requer que o pagamento seja criado e o QR code retornado
+    } else if (data.paymentMethod === "boleto") {
+      // Boleto requer que o pagamento seja criado e o código de barras retornado
+    }
+
+    const response = await fetch("https://api.mercadopago.com/v1/payments", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(paymentPayload),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      console.error("Mercado Pago API error:", error);
+      return {
+        success: false,
+        error: error.message || "Erro ao processar pagamento",
+      };
+    }
+
+    const payment = await response.json();
+
+    // Formatar resposta baseado no método de pagamento
+    const result: PaymentResponse = {
+      success: payment.status === "approved" || payment.status === "pending",
+      paymentId: payment.id.toString(),
+      status: payment.status,
+    };
+
+    if (data.paymentMethod === "pix" && payment.point_of_interaction?.qr_code) {
+      result.pixQrCode = payment.point_of_interaction.qr_code.image;
+      result.pixCopyPaste = payment.point_of_interaction.qr_code.in_store_order_id;
+    } else if (data.paymentMethod === "boleto" && payment.transaction_details) {
+      result.barcodeNumber = payment.transaction_details.acquirer_reference;
+      result.barcodePicture = payment.transaction_details.external_resource_url;
+    }
+
+    return result;
+  } catch (error) {
+    console.error("Erro processando pagamento Mercado Pago:", error);
+    return {
+      success: false,
+      error: "Erro ao processar pagamento",
+    };
+  }
+}
+
+/**
+ * Obtém status de um pagamento
+ */
+export async function getPaymentStatus(paymentId: string): Promise<{
+  status: string;
+  statusDetail: string;
+}> {
   const accessToken = ENV.mercadopagoAccessToken;
 
   if (!accessToken) {
     throw new Error("Mercado Pago Access Token não configurado");
   }
 
-  const baseUrl = process.env.NODE_ENV === "production" 
-    ? "https://comprasportal-mrzgqbgx.manus.space"
-    : "http://localhost:3000";
-
-  const preferenceData = {
-    items: params.items.map(item => ({
-      title: item.title,
-      quantity: item.quantity,
-      unit_price: item.unit_price,
-      currency_id: "BRL",
-    })),
-    payer: {
-      name: params.customerName,
-      email: params.customerEmail,
-    },
-    back_urls: {
-      success: `${baseUrl}/pedido-confirmado?order=${params.orderId}`,
-      failure: `${baseUrl}/checkout?error=payment_failed`,
-      pending: `${baseUrl}/checkout?status=pending`,
-    },
-    external_reference: `order_${params.orderId}`,
-    auto_return: "approved",
-  };
-
   try {
-    const response = await fetch("https://api.mercadopago.com/checkout/preferences", {
-      method: "POST",
+    const response = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
       headers: {
-        "Content-Type": "application/json",
         "Authorization": `Bearer ${accessToken}`,
       },
-      body: JSON.stringify(preferenceData),
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      console.error("Mercado Pago API error:", error);
-      throw new Error(`Erro ao criar preferência: ${error.message || "Erro desconhecido"}`);
+      throw new Error("Erro ao buscar status do pagamento");
     }
 
-    const preference = await response.json();
+    const payment = await response.json();
     return {
-      id: preference.id,
-      initPoint: preference.init_point,
-      sandboxInitPoint: preference.sandbox_init_point,
+      status: payment.status,
+      statusDetail: payment.status_detail,
     };
   } catch (error) {
-    console.error("Erro criando preferência Mercado Pago:", error);
+    console.error("Erro buscando status do pagamento:", error);
     throw error;
   }
 }
