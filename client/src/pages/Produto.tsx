@@ -37,11 +37,12 @@ const ALL_REVIEWS = [
   { initials: "FS", name: "Fernanda S.", city: "Belém - PA", time: "há 2 dias", text: "Adorei a experiência de compra! Produto chegou bem protegido e em perfeito estado.", rating: 5 },
 ];
 
-// Função para variar quantidade de avaliações por produto
+// Função para variar quantidade de avaliações por produto (33 quantidades diferentes)
 function getReviewsForProduct(productId: number): typeof ALL_REVIEWS {
-  const quantities = [8, 12, 10, 14, 9, 11, 13, 15, 7, 16];
+  // 33 quantidades diferentes para cada um dos 33 produtos
+  const quantities = [8, 12, 10, 14, 9, 11, 13, 15, 7, 16, 6, 5, 11, 12, 8, 9, 13, 14, 10, 15, 7, 16, 11, 12, 9, 10, 14, 8, 13, 15, 6, 11, 12];
   const index = (productId - 1) % quantities.length;
-  const quantity = quantities[index];
+  const quantity = quantities[Math.min(index, quantities.length - 1)];
   return ALL_REVIEWS.slice(0, Math.min(quantity, ALL_REVIEWS.length));
 }
 
