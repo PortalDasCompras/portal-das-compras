@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { nanoid } from "nanoid";
 import { COOKIE_NAME } from "@shared/const";
+import { createMercadoPagoPreference } from "./mercadopago";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
@@ -194,7 +195,7 @@ export const appRouter = router({
         paymentMethod: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
-        await createOrder({
+        const order = await createOrder({
           customerName: input.customerName,
           customerEmail: input.customerEmail,
           customerPhone: input.customerPhone,
@@ -210,7 +211,24 @@ export const appRouter = router({
           total: input.total.toString() as any,
           paymentMethod: input.paymentMethod ?? "pix",
         });
-        return { success: true };
+        
+        try {
+          const preference = await createMercadoPagoPreference({
+            orderId: order.id,
+            customerName: input.customerName,
+            customerEmail: input.customerEmail,
+            total: input.total,
+            items: input.items.map(i => ({
+              title: i.name,
+              quantity: i.quantity,
+              unit_price: i.price,
+            })),
+          });
+          return { success: true, paymentUrl: preference.initPoint };
+        } catch (error) {
+          console.error("Erro ao criar preferencia Mercado Pago:", error);
+          return { success: true, paymentUrl: null };
+        }
       }),
 
     list: publicProcedure.query(async ({ ctx }) => {

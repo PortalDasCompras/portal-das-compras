@@ -45,3 +45,11 @@
 
 ## Correções e Melhorias
 - [x] Adicionar cookie-parser middleware para processar cookies do admin
+
+
+## Integração Mercado Pago (Checkout Redirect)
+- [x] Criar helper para gerar preferência de pagamento
+- [x] Adicionar endpoint tRPC para criar preferência
+- [x] Integrar redirecionamento no checkout
+- [x] Testar PIX, boleto e cartão
+- [x] Configurar URLs de retorno (sucesso/falha)

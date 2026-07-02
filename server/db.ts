@@ -119,8 +119,9 @@ export async function getAllProductsAdmin() {
 export async function createOrder(data: InsertOrder) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  const result = await db.insert(orders).values(data);
-  return result;
+  await db.insert(orders).values(data);
+  const result = await db.select().from(orders).orderBy(desc(orders.createdAt)).limit(1);
+  return result[0] || { id: 0 };
 }
 
 export async function getAllOrders() {

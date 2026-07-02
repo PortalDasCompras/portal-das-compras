@@ -109,7 +109,7 @@ export default function Checkout() {
     }
 
     try {
-      await createOrder.mutateAsync({
+      const result = await createOrder.mutateAsync({
         customerName: form.customerName,
         customerEmail: form.customerEmail,
         customerPhone: form.customerPhone.replace(/\D/g, ""),
@@ -125,8 +125,14 @@ export default function Checkout() {
         total,
         paymentMethod: form.paymentMethod,
       });
-      clearCart();
-      navigate("/pedido-confirmado");
+      
+      if (result.paymentUrl) {
+        clearCart();
+        window.location.href = result.paymentUrl;
+      } else {
+        clearCart();
+        navigate("/pedido-confirmado");
+      }
     } catch (err) {
       toast.error("Erro ao finalizar pedido. Tente novamente.");
     }
