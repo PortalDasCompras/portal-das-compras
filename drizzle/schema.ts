@@ -1,39 +1,43 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, decimal, boolean, json } from "drizzle-orm/mysql-core";
+import { pgTable, pgEnum, serial, varchar, text, decimal, integer, boolean, timestamp, json } from "drizzle-orm/pg-core";
 
-export const users = mysqlTable("users", {
-  id: int("id").autoincrement().primaryKey(),
+export const roleEnum = pgEnum("role", ["user", "admin"]);
+export const categoryEnum = pgEnum("category", ["beleza", "casa", "eletronicos", "esportes", "moda", "outros"]);
+export const statusEnum = pgEnum("status", ["pendente", "processando", "enviado", "entregue", "cancelado"]);
+
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  role: roleEnum("role").default("user").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
 });
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-export const products = mysqlTable("products", {
-  id: int("id").autoincrement().primaryKey(),
+export const products = pgTable("products", {
+  id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   originalPrice: decimal("originalPrice", { precision: 10, scale: 2 }).notNull(),
-  category: mysqlEnum("category", ["beleza", "casa", "eletronicos", "esportes", "moda", "outros"]).notNull(),
+  category: categoryEnum("category").notNull(),
   image: text("image").notNull(),
-  stock: int("stock").default(10).notNull(),
+  stock: integer("stock").default(10).notNull(),
   active: boolean("active").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type Product = typeof products.$inferSelect;
 export type InsertProduct = typeof products.$inferInsert;
 
-export const orders = mysqlTable("orders", {
-  id: int("id").autoincrement().primaryKey(),
+export const orders = pgTable("orders", {
+  id: serial("id").primaryKey(),
   customerName: varchar("customerName", { length: 255 }).notNull(),
   customerEmail: varchar("customerEmail", { length: 320 }).notNull(),
   customerPhone: varchar("customerPhone", { length: 20 }).notNull(),
@@ -47,7 +51,7 @@ export const orders = mysqlTable("orders", {
   addressState: varchar("addressState", { length: 2 }).notNull(),
   items: json("items").notNull(),
   total: decimal("total", { precision: 10, scale: 2 }).notNull().$type<number>(),
-  status: mysqlEnum("status", ["pendente", "processando", "enviado", "entregue", "cancelado"]).default("pendente").notNull(),
+  status: statusEnum("status").default("pendente").notNull(),
   paymentMethod: varchar("paymentMethod", { length: 50 }).default("pix").notNull(),
   paymentId: varchar("paymentId", { length: 255 }),
   paymentStatus: varchar("paymentStatus", { length: 50 }),
@@ -56,14 +60,14 @@ export const orders = mysqlTable("orders", {
   barcodeNumber: varchar("barcodeNumber", { length: 255 }),
   barcodePicture: text("barcodePicture"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type Order = typeof orders.$inferSelect;
 export type InsertOrder = typeof orders.$inferInsert;
 
-export const adminSessions = mysqlTable("admin_sessions", {
-  id: int("id").autoincrement().primaryKey(),
+export const adminSessions = pgTable("admin_sessions", {
+  id: serial("id").primaryKey(),
   token: varchar("token", { length: 255 }).notNull().unique(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   expiresAt: timestamp("expiresAt").notNull(),

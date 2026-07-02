@@ -1,33 +1,21 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "../drizzle/schema";
-import { eq, ilike } from "drizzle-orm";
+import { eq, like, ilike } from "drizzle-orm";
 
 // Criar conexão com o banco de dados
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
-  console.warn("DATABASE_URL not configured, using in-memory fallback");
+  throw new Error("DATABASE_URL is required");
 }
 
-let db: any = null;
-if (connectionString) {
-  const client = postgres(connectionString);
-  db = drizzle(client, { schema });
-}
-
-// Fallback para dados em memória se não houver banco
-const fallbackData = {
-  products: [] as any[],
-  orders: [] as any[],
-  users: [] as any[],
-};
+const client = postgres(connectionString);
+export const db = drizzle(client, { schema });
 
 // ─── Products ──────────────────────────────────────────────────────────────
 
 export async function getAllProducts(search?: string) {
   try {
-    if (!db) return fallbackData.products;
-    
     if (search) {
       return await db
         .select()
@@ -38,14 +26,12 @@ export async function getAllProducts(search?: string) {
     return await db.select().from(schema.products).limit(100);
   } catch (error) {
     console.error("Erro ao buscar produtos:", error);
-    return fallbackData.products;
+    return [];
   }
 }
 
 export async function getProductsByCategory(category: string) {
   try {
-    if (!db) return fallbackData.products.filter(p => p.category === category);
-    
     return await db
       .select()
       .from(schema.products)
@@ -59,8 +45,6 @@ export async function getProductsByCategory(category: string) {
 
 export async function getProductById(id: number) {
   try {
-    if (!db) return fallbackData.products.find(p => p.id === id) || null;
-    
     const result = await db
       .select()
       .from(schema.products)
@@ -73,23 +57,8 @@ export async function getProductById(id: number) {
   }
 }
 
-export async function getAllProductsAdmin() {
-  return getAllProducts();
-}
-
 export async function createProduct(data: any) {
   try {
-    if (!db) {
-      const product = {
-        id: Math.max(0, ...fallbackData.products.map(p => p.id)) + 1,
-        ...data,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      fallbackData.products.push(product);
-      return product;
-    }
-
     const result = await db
       .insert(schema.products)
       .values({
@@ -112,22 +81,13 @@ export async function createProduct(data: any) {
 
 export async function updateProduct(id: number, data: any) {
   try {
-    if (!db) {
-      const idx = fallbackData.products.findIndex(p => p.id === id);
-      if (idx >= 0) {
-        fallbackData.products[idx] = { ...fallbackData.products[idx], ...data, updatedAt: new Date() };
-        return fallbackData.products[idx];
-      }
-      return null;
-    }
-
     const result = await db
       .update(schema.products)
       .set({
         name: data.name,
         description: data.description,
-        price: data.price ? (parseFloat(data.price) || 0).toString() : undefined,
-        originalPrice: data.originalPrice ? (parseFloat(data.originalPrice) || 0).toString() : undefined,
+        price: data.price ? parseFloat(data.price).toString() : undefined,
+        originalPrice: data.originalPrice ? parseFloat(data.originalPrice).toString() : undefined,
         category: data.category,
         image: data.image,
         stock: data.stock,
@@ -145,14 +105,6 @@ export async function updateProduct(id: number, data: any) {
 
 export async function deleteProduct(id: number) {
   try {
-    if (!db) {
-      const idx = fallbackData.products.findIndex(p => p.id === id);
-      if (idx >= 0) {
-        fallbackData.products.splice(idx, 1);
-      }
-      return true;
-    }
-
     await db.delete(schema.products).where(eq(schema.products.id, id));
     return true;
   } catch (error) {
@@ -165,17 +117,6 @@ export async function deleteProduct(id: number) {
 
 export async function createOrder(data: any) {
   try {
-    if (!db) {
-      const order = {
-        id: Math.max(0, ...fallbackData.orders.map(o => o.id)) + 1,
-        ...data,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      fallbackData.orders.push(order);
-      return order;
-    }
-
     const result = await db
       .insert(schema.orders)
       .values({
@@ -191,7 +132,7 @@ export async function createOrder(data: any) {
         addressCity: data.addressCity,
         addressState: data.addressState,
         items: data.items,
-        total: (parseFloat(data.total) || 0).toString(),
+        total: parseFloat(data.total),
         status: data.status || "pendente",
         paymentMethod: data.paymentMethod || "pix",
       })
@@ -205,8 +146,6 @@ export async function createOrder(data: any) {
 
 export async function getOrderById(id: number) {
   try {
-    if (!db) return fallbackData.orders.find(o => o.id === id) || null;
-    
     const result = await db
       .select()
       .from(schema.orders)
@@ -221,27 +160,15 @@ export async function getOrderById(id: number) {
 
 export async function getAllOrders() {
   try {
-    if (!db) return fallbackData.orders;
-    
     return await db.select().from(schema.orders).limit(1000);
   } catch (error) {
     console.error("Erro ao buscar pedidos:", error);
-    return fallbackData.orders;
+    return [];
   }
 }
 
 export async function updateOrderStatus(id: number, status: string) {
   try {
-    if (!db) {
-      const idx = fallbackData.orders.findIndex(o => o.id === id);
-      if (idx >= 0) {
-        fallbackData.orders[idx].status = status;
-        fallbackData.orders[idx].updatedAt = new Date();
-        return fallbackData.orders[idx];
-      }
-      return null;
-    }
-
     const result = await db
       .update(schema.orders)
       .set({
@@ -257,26 +184,27 @@ export async function updateOrderStatus(id: number, status: string) {
   }
 }
 
-export async function updateOrderPayment(id: number, data: any) {
+export async function updateOrderPayment(
+  id: number,
+  paymentData: {
+    paymentId?: string;
+    paymentStatus?: string;
+    pixQrCode?: string;
+    pixCopyPaste?: string;
+    barcodeNumber?: string;
+    barcodePicture?: string;
+  }
+) {
   try {
-    if (!db) {
-      const idx = fallbackData.orders.findIndex(o => o.id === id);
-      if (idx >= 0) {
-        Object.assign(fallbackData.orders[idx], data, { updatedAt: new Date() });
-        return fallbackData.orders[idx];
-      }
-      return null;
-    }
-
     const result = await db
       .update(schema.orders)
       .set({
-        paymentId: data.paymentId,
-        paymentStatus: data.paymentStatus,
-        pixQrCode: data.pixQrCode,
-        pixCopyPaste: data.pixCopyPaste,
-        barcodeNumber: data.barcodeNumber,
-        barcodePicture: data.barcodePicture,
+        paymentId: paymentData.paymentId,
+        paymentStatus: paymentData.paymentStatus,
+        pixQrCode: paymentData.pixQrCode,
+        pixCopyPaste: paymentData.pixCopyPaste,
+        barcodeNumber: paymentData.barcodeNumber,
+        barcodePicture: paymentData.barcodePicture,
         updatedAt: new Date(),
       })
       .where(eq(schema.orders.id, id))
@@ -292,8 +220,6 @@ export async function updateOrderPayment(id: number, data: any) {
 
 export async function getUserByOpenId(openId: string) {
   try {
-    if (!db) return fallbackData.users.find(u => u.openId === openId) || null;
-    
     const result = await db
       .select()
       .from(schema.users)
@@ -306,73 +232,42 @@ export async function getUserByOpenId(openId: string) {
   }
 }
 
-export async function upsertUser(data: any) {
+export async function createUser(data: any) {
   try {
-    if (!db) {
-      const idx = fallbackData.users.findIndex(u => u.openId === data.openId);
-      if (idx >= 0) {
-        fallbackData.users[idx] = { ...fallbackData.users[idx], ...data, updatedAt: new Date() };
-        return fallbackData.users[idx];
-      } else {
-        const user = {
-          id: Math.max(0, ...fallbackData.users.map(u => u.id)) + 1,
-          ...data,
-          role: data.role || "user",
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          lastSignedIn: new Date(),
-        };
-        fallbackData.users.push(user);
-        return user;
-      }
-    }
-
-    const existing = await getUserByOpenId(data.openId);
-    if (existing) {
-      const result = await db
-        .update(schema.users)
-        .set({
-          name: data.name,
-          email: data.email,
-          loginMethod: data.loginMethod,
-          role: data.role || "user",
-          updatedAt: new Date(),
-          lastSignedIn: new Date(),
-        })
-        .where(eq(schema.users.openId, data.openId))
-        .returning();
-      return result[0] || null;
-    } else {
-      const result = await db
-        .insert(schema.users)
-        .values({
-          openId: data.openId,
-          name: data.name,
-          email: data.email,
-          loginMethod: data.loginMethod,
-          role: data.role || "user",
-        })
-        .returning();
-      return result[0] || null;
-    }
+    const result = await db
+      .insert(schema.users)
+      .values({
+        openId: data.openId,
+        name: data.name,
+        email: data.email,
+        loginMethod: data.loginMethod,
+        role: data.role || "user",
+      })
+      .returning();
+    return result[0] || null;
   } catch (error) {
-    console.error("Erro ao fazer upsert de usuário:", error);
+    console.error("Erro ao criar usuário:", error);
     throw error;
   }
 }
 
-// ─── Admin Sessions ────────────────────────────────────────────────────────
-
-let adminSessions: Map<string, { expiresAt: Date }> = new Map();
-
-export async function createAdminSession(token: string, expiresAt: Date) {
-  adminSessions.set(token, { expiresAt });
-}
-
-export async function getAdminSession(token: string) {
-  return adminSessions.get(token) || null;
-}
-
-export async function deleteAdminSession(token: string) {
-  adminSessions.delete(token);
+export async function updateUser(id: number, data: any) {
+  try {
+    const result = await db
+      .update(schema.users)
+      .set({
+        name: data.name,
+        email: data.email,
+        loginMethod: data.loginMethod,
+        role: data.role,
+        updatedAt: new Date(),
+        lastSignedIn: new Date(),
+      })
+      .where(eq(schema.users.id, id))
+      .returning();
+    return result[0] || null;
+  } catch (error) {
+    console.error("Erro ao atualizar usuário:", error);
+    throw error;
+  }
 }
