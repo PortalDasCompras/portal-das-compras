@@ -1,16 +1,14 @@
-import { useState, useMemo } from "react";
-import { Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { useState } from "react";
+import { Search, ChevronLeft, ChevronRight, Sparkles, Home as HomeIcon, Zap, Dumbbell, Shirt, Package } from "lucide-react";
 import { Link } from "wouter";
-import { trpc } from "@/lib/trpc";
-import ProductCard from "@/components/ProductCard";
 
 const CATEGORIES = [
-  { slug: "beleza", label: "Beleza" },
-  { slug: "casa", label: "Casa" },
-  { slug: "eletronicos", label: "Eletrônicos" },
-  { slug: "esportes", label: "Esportes" },
-  { slug: "moda", label: "Moda" },
-  { slug: "outros", label: "Outros" },
+  { slug: "beleza", label: "Beleza", icon: Sparkles, color: "bg-pink-50 text-pink-600 border-pink-100" },
+  { slug: "casa", label: "Casa", icon: HomeIcon, color: "bg-amber-50 text-amber-600 border-amber-100" },
+  { slug: "eletronicos", label: "Eletrônicos", icon: Zap, color: "bg-blue-50 text-blue-600 border-blue-100" },
+  { slug: "esportes", label: "Esportes", icon: Dumbbell, color: "bg-green-50 text-green-600 border-green-100" },
+  { slug: "moda", label: "Moda", icon: Shirt, color: "bg-purple-50 text-purple-600 border-purple-100" },
+  { slug: "outros", label: "Outros", icon: Package, color: "bg-gray-50 text-gray-600 border-gray-200" },
 ];
 
 const BANNERS = [
@@ -19,97 +17,26 @@ const BANNERS = [
     title: "Desconto em Eletrônicos",
     subtitle: "Até 50% OFF",
     bg: "bg-gradient-to-r from-blue-600 to-blue-400",
-    image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=1200&h=300&fit=crop"
   },
   {
     id: 2,
     title: "Moda Sustentável",
     subtitle: "Coleção Nova",
     bg: "bg-gradient-to-r from-purple-600 to-pink-400",
-    image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200&h=300&fit=crop"
   }
 ];
 
-function CarouselSection({ title, products, categorySlug }: { title: string; products: any[]; categorySlug: string }) {
+export default function Home() {
+  const [search, setSearch] = useState("");
   const [scrollPos, setScrollPos] = useState(0);
 
   const scroll = (direction: "left" | "right") => {
-    const container = document.getElementById(`carousel-${categorySlug}`);
+    const container = document.getElementById("categories-carousel");
     if (!container) return;
-    const scrollAmount = 300;
+    const scrollAmount = 350;
     const newPos = direction === "left" ? scrollPos - scrollAmount : scrollPos + scrollAmount;
     container.scrollLeft = newPos;
     setScrollPos(newPos);
-  };
-
-  return (
-    <div className="mb-12">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold text-gray-900">{title}</h2>
-        <Link href={`/categoria/${categorySlug}`} className="text-sm text-red-600 hover:text-red-700 font-medium">
-          Ver todos →
-        </Link>
-      </div>
-      <div className="relative">
-        <div
-          id={`carousel-${categorySlug}`}
-          className="flex gap-4 overflow-x-auto scroll-smooth pb-2"
-          style={{ scrollBehavior: "smooth" }}
-        >
-          {products.slice(0, 5).map(product => (
-            <div key={product.id} className="flex-shrink-0 w-48">
-              <ProductCard
-                id={product.id}
-                name={product.name}
-                price={product.price}
-                originalPrice={product.originalPrice}
-                image={product.image}
-              />
-            </div>
-          ))}
-        </div>
-        <button
-          onClick={() => scroll("left")}
-          className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 bg-red-600 hover:bg-red-700 text-white p-2 rounded-full transition-colors z-10"
-          aria-label="Anterior"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-        <button
-          onClick={() => scroll("right")}
-          className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 bg-red-600 hover:bg-red-700 text-white p-2 rounded-full transition-colors z-10"
-          aria-label="Próximo"
-        >
-          <ChevronRight className="w-5 h-5" />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-export default function Home() {
-  const [search, setSearch] = useState("");
-
-  const { data: allProducts = [] } = trpc.products.list.useQuery(
-    { category: "todos" },
-    { refetchOnWindowFocus: false }
-  );
-
-  // Agrupar produtos por categoria
-  const productsByCategory = useMemo(() => {
-    const grouped: Record<string, any[]> = {};
-    CATEGORIES.forEach(cat => {
-      grouped[cat.slug] = allProducts.filter(p => p.category === cat.slug);
-    });
-    return grouped;
-  }, [allProducts]);
-
-  // Mais vendidos (primeiros 5)
-  const topSelling = allProducts.slice(0, 5);
-
-  const handleSearch = (value: string) => {
-    setSearch(value);
-    // Aqui você poderia adicionar lógica de busca se necessário
   };
 
   return (
@@ -131,7 +58,7 @@ export default function Home() {
               type="text"
               placeholder="Buscar produtos..."
               value={search}
-              onChange={e => handleSearch(e.target.value)}
+              onChange={e => setSearch(e.target.value)}
               className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent bg-gray-50"
             />
           </div>
@@ -149,34 +76,60 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Mais Vendidos Carousel */}
-        {topSelling.length > 0 && (
-          <CarouselSection title="🔥 Mais Vendidos" products={topSelling} categorySlug="top" />
-        )}
+        {/* Categories Carousel */}
+        <div className="mb-12">
+          <h2 className="text-2xl font-bold text-gray-900 mb-8">Explore as Categorias</h2>
+          
+          <div className="relative">
+            <div
+              id="categories-carousel"
+              className="flex gap-4 overflow-x-auto scroll-smooth pb-4"
+              style={{ scrollBehavior: "smooth" }}
+            >
+              {CATEGORIES.map(cat => {
+                const Icon = cat.icon;
+                return (
+                  <Link key={cat.slug} href={`/categoria/${cat.slug}`}>
+                    <div className="flex-shrink-0 w-80 h-48 bg-white border rounded-2xl p-6 flex flex-col items-start gap-4 hover:shadow-lg hover:border-red-300 transition-all duration-200 cursor-pointer">
+                      <div className={`p-3 rounded-lg ${cat.color} border`}>
+                        <Icon className="w-6 h-6" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-bold text-xl text-gray-900">{cat.label}</h3>
+                      </div>
+                      <div className="text-sm text-red-600 font-medium">Ver produtos →</div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+
+            {/* Carousel Controls */}
+            <button
+              onClick={() => scroll("left")}
+              className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 bg-red-600 hover:bg-red-700 text-white p-2 rounded-full transition-colors z-10"
+              aria-label="Anterior"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => scroll("right")}
+              className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 bg-red-600 hover:bg-red-700 text-white p-2 rounded-full transition-colors z-10"
+              aria-label="Próximo"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
 
         {/* Middle Banner */}
-        <div className="mb-12 rounded-2xl overflow-hidden shadow-lg">
+        <div className="rounded-2xl overflow-hidden shadow-lg">
           <div className={`${BANNERS[1].bg} h-48 md:h-64 flex items-center justify-center text-center text-white p-6`}>
             <div>
               <h2 className="text-3xl md:text-4xl font-bold mb-2">{BANNERS[1].title}</h2>
               <p className="text-lg md:text-2xl opacity-90">{BANNERS[1].subtitle}</p>
             </div>
           </div>
-        </div>
-
-        {/* Categories with Carousels */}
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-8">Todas as Categorias</h2>
-          {CATEGORIES.map(category => (
-            productsByCategory[category.slug]?.length > 0 && (
-              <CarouselSection
-                key={category.slug}
-                title={category.label}
-                products={productsByCategory[category.slug]}
-                categorySlug={category.slug}
-              />
-            )
-          ))}
         </div>
       </div>
     </div>
