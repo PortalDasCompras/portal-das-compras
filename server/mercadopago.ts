@@ -156,11 +156,15 @@ export async function processPayment(data: PaymentData): Promise<PaymentResponse
       // Boleto requer que o pagamento seja criado e o código de barras retornado
     }
 
+    // Gerar ID de idempotência único para evitar duplicação de pagamentos
+    const idempotencyKey = `${data.orderId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
     const response = await fetch("https://api.mercadopago.com/v1/payments", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${accessToken}`,
+        "X-Idempotency-Key": idempotencyKey,
       },
       body: JSON.stringify(paymentPayload),
     });

@@ -53,5 +53,32 @@
     "id": 2,
     "createdAt": "2026-07-02T20:38:06.132Z",
     "updatedAt": "2026-07-02T20:38:06.132Z"
+  },
+  {
+    "customerName": "João Silva",
+    "customerEmail": "joao@test.com",
+    "customerPhone": "11987654321",
+    "customerCpf": "12345678901",
+    "addressCep": "01310100",
+    "addressStreet": "Avenida Paulista",
+    "addressNumber": "100",
+    "addressNeighborhood": "Bela Vista",
+    "addressCity": "São Paulo",
+    "addressState": "SP",
+    "items": [
+      {
+        "productId": 1,
+        "name": "Blusa Moletom Feminina Básica Premium",
+        "price": 139.9,
+        "quantity": 1,
+        "image": "/manus-storage/produto_01_blusa_moletom_a985089d.png"
+      }
+    ],
+    "total": 159.8,
+    "status": "pendente",
+    "paymentMethod": "pix",
+    "id": 3,
+    "createdAt": "2026-07-02T21:15:02.306Z",
+    "updatedAt": "2026-07-02T21:15:02.306Z"
   }
 ]
