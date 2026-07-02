@@ -132,12 +132,21 @@ export default function Produto() {
               Comprar agora
             </button>
 
-            {/* Video placeholder */}
-            <div className="relative bg-black rounded-xl overflow-hidden aspect-video flex items-center justify-center">
-              <div className="text-white text-sm opacity-60">Vídeo do produto</div>
+            {/* Video */}
+            <div className="relative bg-black rounded-xl overflow-hidden aspect-video">
+              <video
+                className="w-full h-full object-cover"
+                autoPlay
+                loop
+                muted={muted}
+                playsInline
+              >
+                <source src="https://portaldascompra.lovable.app/__l5e/assets-v1/095cedc1-f0ac-495f-b1d2-193c8179ce3f/ugc-product.mp4" type="video/mp4" />
+                Seu navegador não suporta vídeos HTML5.
+              </video>
               <button
                 onClick={() => setMuted(!muted)}
-                className="absolute bottom-3 right-3 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white p-2 rounded-full transition-colors"
+                className="absolute bottom-3 right-3 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white p-2 rounded-full transition-colors z-10"
                 aria-label={muted ? "Ativar som" : "Desativar som"}
               >
                 {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
