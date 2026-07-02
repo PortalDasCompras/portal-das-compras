@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useParams, useLocation } from "wouter";
-import { ChevronDown, ChevronUp, Star, Volume2, VolumeX, ShoppingCart, CheckCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronUp, Star, Volume2, VolumeX, ShoppingCart, CheckCircle } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "sonner";
@@ -187,17 +187,18 @@ export default function Produto() {
                 <source src="https://portaldascompra.lovable.app/__l5e/assets-v1/095cedc1-f0ac-495f-b1d2-193c8179ce3f/ugc-product.mp4" type="video/mp4" />
                 Seu navegador não suporta vídeos HTML5.
               </video>
-              {muted && (
-                <button
-                  onClick={() => setMuted(false)}
-                  className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors group"
-                  aria-label="Ativar som"
-                >
-                  <div className="bg-white/90 group-hover:bg-white text-red-600 p-4 rounded-full transition-all transform group-hover:scale-110">
-                    <VolumeX className="w-8 h-8" />
-                  </div>
-                </button>
-              )}
+              <button
+                onClick={() => setMuted(!muted)}
+                className="absolute bottom-4 right-4 bg-white/90 hover:bg-white text-red-600 p-2.5 rounded-full transition-all transform hover:scale-110 z-10 shadow-lg"
+                aria-label={muted ? "Ativar som" : "Desativar som"}
+                title={muted ? "Clique para ativar som" : "Clique para desativar som"}
+              >
+                {muted ? (
+                  <VolumeX className="w-5 h-5" />
+                ) : (
+                  <Volume2 className="w-5 h-5" />
+                )}
+              </button>
             </div>
           </div>
         </div>
