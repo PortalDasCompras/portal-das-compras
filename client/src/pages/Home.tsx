@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Search, ChevronLeft, ChevronRight, Sparkles, Home as HomeIcon, Zap, Dumbbell, Shirt, Package } from "lucide-react";
 import { Link } from "wouter";
+import { trpc } from "@/lib/trpc";
+import ProductCard from "@/components/ProductCard";
 
 const CATEGORIES = [
   { slug: "beleza", label: "Beleza", icon: Sparkles, color: "bg-pink-50 text-pink-600 border-pink-100" },
@@ -29,14 +31,21 @@ const BANNERS = [
 export default function Home() {
   const [search, setSearch] = useState("");
   const [scrollPos, setScrollPos] = useState(0);
+  const [topSellingScroll, setTopSellingScroll] = useState(0);
+  const [categoriesScroll, setCategoriesScroll] = useState(0);
 
-  const scroll = (direction: "left" | "right") => {
-    const container = document.getElementById("categories-carousel");
+  const { data: products = [] } = trpc.products.list.useQuery(undefined, { refetchOnWindowFocus: false });
+
+  // Ordenar produtos por mais vendidos (simulado por ID)
+  const topSellingProducts = products.slice(0, 5);
+
+  const scroll = (direction: "left" | "right", containerId: string, setter: any, current: number) => {
+    const container = document.getElementById(containerId);
     if (!container) return;
-    const scrollAmount = 350;
-    const newPos = direction === "left" ? scrollPos - scrollAmount : scrollPos + scrollAmount;
+    const scrollAmount = 300;
+    const newPos = direction === "left" ? current - scrollAmount : current + scrollAmount;
     container.scrollLeft = newPos;
-    setScrollPos(newPos);
+    setter(newPos);
   };
 
   return (
@@ -76,28 +85,75 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Categories Carousel */}
-        <div className="mb-12">
-          <h2 className="text-2xl font-bold text-gray-900 mb-8">Explore as Categorias</h2>
+        {/* Top Selling Products Carousel */}
+        {topSellingProducts.length > 0 && (
+          <div className="mb-12">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Mais Vendidos</h2>
+            
+            <div className="relative">
+              <div
+                id="top-selling-carousel"
+                className="flex gap-4 overflow-x-auto scroll-smooth pb-4"
+                style={{ scrollBehavior: "smooth" }}
+              >
+                {topSellingProducts.map(product => (
+                  <div key={product.id} className="flex-shrink-0 w-64">
+                    <ProductCard id={product.id} name={product.name} price={product.price} originalPrice={product.originalPrice} image={product.image} />
+                  </div>
+                ))}
+              </div>
+
+              {/* Carousel Controls */}
+              <button
+                onClick={() => scroll("left", "top-selling-carousel", setTopSellingScroll, topSellingScroll)}
+                className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 bg-red-600 hover:bg-red-700 text-white p-2 rounded-full transition-colors z-10"
+                aria-label="Anterior"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => scroll("right", "top-selling-carousel", setTopSellingScroll, topSellingScroll)}
+                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 bg-red-600 hover:bg-red-700 text-white p-2 rounded-full transition-colors z-10"
+                aria-label="Próximo"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Middle Banner */}
+        <div className="mb-12 rounded-2xl overflow-hidden shadow-lg">
+          <div className={`${BANNERS[1].bg} h-48 md:h-64 flex items-center justify-center text-center text-white p-6`}>
+            <div>
+              <h2 className="text-3xl md:text-4xl font-bold mb-2">{BANNERS[1].title}</h2>
+              <p className="text-lg md:text-2xl opacity-90">{BANNERS[1].subtitle}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Categories Grid - Smaller Icons */}
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Explore as Categorias</h2>
           
           <div className="relative">
             <div
               id="categories-carousel"
-              className="flex gap-4 overflow-x-auto scroll-smooth pb-4"
+              className="flex gap-3 overflow-x-auto scroll-smooth pb-4"
               style={{ scrollBehavior: "smooth" }}
             >
               {CATEGORIES.map(cat => {
                 const Icon = cat.icon;
                 return (
                   <Link key={cat.slug} href={`/categoria/${cat.slug}`}>
-                    <div className="flex-shrink-0 w-80 h-48 bg-white border rounded-2xl p-6 flex flex-col items-start gap-4 hover:shadow-lg hover:border-red-300 transition-all duration-200 cursor-pointer">
-                      <div className={`p-3 rounded-lg ${cat.color} border`}>
-                        <Icon className="w-6 h-6" />
+                    <div className="flex-shrink-0 w-32 md:w-40 bg-white border rounded-xl p-4 flex flex-col items-center gap-3 hover:shadow-lg hover:border-red-300 transition-all duration-200 cursor-pointer">
+                      <div className={`p-2 rounded-lg ${cat.color} border`}>
+                        <Icon className="w-5 h-5" />
                       </div>
-                      <div className="flex-1">
-                        <h3 className="font-bold text-xl text-gray-900">{cat.label}</h3>
+                      <div className="text-center">
+                        <h3 className="font-bold text-sm md:text-base text-gray-900">{cat.label}</h3>
                       </div>
-                      <div className="text-sm text-red-600 font-medium">Ver produtos →</div>
+                      <div className="text-xs text-red-600 font-medium">Ver →</div>
                     </div>
                   </Link>
                 );
@@ -106,29 +162,19 @@ export default function Home() {
 
             {/* Carousel Controls */}
             <button
-              onClick={() => scroll("left")}
+              onClick={() => scroll("left", "categories-carousel", setCategoriesScroll, categoriesScroll)}
               className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 bg-red-600 hover:bg-red-700 text-white p-2 rounded-full transition-colors z-10"
               aria-label="Anterior"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
             <button
-              onClick={() => scroll("right")}
+              onClick={() => scroll("right", "categories-carousel", setCategoriesScroll, categoriesScroll)}
               className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 bg-red-600 hover:bg-red-700 text-white p-2 rounded-full transition-colors z-10"
               aria-label="Próximo"
             >
               <ChevronRight className="w-5 h-5" />
             </button>
-          </div>
-        </div>
-
-        {/* Middle Banner */}
-        <div className="rounded-2xl overflow-hidden shadow-lg">
-          <div className={`${BANNERS[1].bg} h-48 md:h-64 flex items-center justify-center text-center text-white p-6`}>
-            <div>
-              <h2 className="text-3xl md:text-4xl font-bold mb-2">{BANNERS[1].title}</h2>
-              <p className="text-lg md:text-2xl opacity-90">{BANNERS[1].subtitle}</p>
-            </div>
           </div>
         </div>
       </div>

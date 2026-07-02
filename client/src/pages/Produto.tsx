@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useParams, useLocation } from "wouter";
 import { ChevronDown, ChevronUp, Star, Volume2, VolumeX, ShoppingCart, CheckCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { trpc } from "@/lib/trpc";
@@ -38,6 +38,16 @@ export default function Produto() {
   const [added, setAdded] = useState(false);
   const [reviewIndex, setReviewIndex] = useState(0);
   const [showAllReviews, setShowAllReviews] = useState(false);
+  const [autoPlayReviews, setAutoPlayReviews] = useState(true);
+
+  // Auto-scroll das avaliações
+  useEffect(() => {
+    if (!autoPlayReviews) return;
+    const interval = setInterval(() => {
+      setReviewIndex((prev) => (prev + 1) % REVIEWS.length);
+    }, 5000); // Muda a cada 5 segundos
+    return () => clearInterval(interval);
+  }, [autoPlayReviews]);
 
   const { data: product, isLoading } = trpc.products.getById.useQuery(
     { id: parseInt(id) },
@@ -74,14 +84,18 @@ export default function Produto() {
   const categoryLabel = CATEGORY_LABELS[product.category] ?? product.category;
 
   const nextReview = () => {
+    setAutoPlayReviews(false);
     setReviewIndex((prev) => (prev + 1) % REVIEWS.length);
+    setTimeout(() => setAutoPlayReviews(true), 10000); // Retoma auto-play após 10s
   };
 
   const prevReview = () => {
+    setAutoPlayReviews(false);
     setReviewIndex((prev) => (prev - 1 + REVIEWS.length) % REVIEWS.length);
+    setTimeout(() => setAutoPlayReviews(true), 10000); // Retoma auto-play após 10s
   };
 
-  const visibleReviews = showAllReviews ? REVIEWS : REVIEWS.slice(0, 4);
+  const visibleReviews = [REVIEWS[reviewIndex]];
 
   const handleBuy = () => {
     addItem({
@@ -221,14 +235,14 @@ export default function Produto() {
             {/* Carousel Controls */}
             <button
               onClick={prevReview}
-              className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 bg-red-600 hover:bg-red-700 text-white p-2 rounded-full transition-colors z-10"
+              className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 bg-red-600 hover:bg-red-700 text-white p-2.5 rounded-full transition-colors z-10 shadow-lg"
               aria-label="Avaliação anterior"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
             <button
               onClick={nextReview}
-              className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 bg-red-600 hover:bg-red-700 text-white p-2 rounded-full transition-colors z-10"
+              className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 bg-red-600 hover:bg-red-700 text-white p-2.5 rounded-full transition-colors z-10 shadow-lg"
               aria-label="Próxima avaliação"
             >
               <ChevronRight className="w-5 h-5" />
