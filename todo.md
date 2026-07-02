@@ -54,3 +54,15 @@
 - [x] Integrar boleto com código de barras
 - [x] Adicionar validações e tratamento de erros
 - [x] Testar fluxo completo de pagamento
+
+## Integração com Webhooks
+- [x] Configurar webhook endpoint para Mercado Pago
+- [x] Implementar validação de assinatura HMAC-SHA256
+- [x] Configurar Webhook Secret
+- [x] Remover integração Stripe (não será usada)
+
+## Deploy
+- [ ] Criar repositório no GitHub
+- [ ] Fazer push do código
+- [ ] Configurar Vercel
+- [ ] Configurar variáveis de ambiente em produção
