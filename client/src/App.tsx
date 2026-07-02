@@ -5,6 +5,7 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { CartProvider } from "./contexts/CartContext";
+import { WishlistProvider } from "./contexts/WishlistContext";
 import { AdminProvider } from "./contexts/AdminContext";
 import StoreLayout from "./components/StoreLayout";
 import AdminRoute from "./components/AdminRoute";
@@ -16,6 +17,7 @@ import Produto from "./pages/Produto";
 import Carrinho from "./pages/Carrinho";
 import Checkout from "./pages/Checkout";
 import PedidoConfirmado from "./pages/PedidoConfirmado";
+import Favoritos from "./pages/Favoritos";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
 
@@ -44,6 +46,9 @@ function Router() {
       <Route path="/pedido-confirmado">
         <StoreLayout><PedidoConfirmado /></StoreLayout>
       </Route>
+      <Route path="/favoritos">
+        <StoreLayout><Favoritos /></StoreLayout>
+      </Route>
 
       {/* Admin pages (no store layout) */}
       <Route path="/admin">
@@ -64,12 +69,14 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
         <CartProvider>
-          <AdminProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Router />
-            </TooltipProvider>
-          </AdminProvider>
+          <WishlistProvider>
+            <AdminProvider>
+              <TooltipProvider>
+                <Toaster />
+                <Router />
+              </TooltipProvider>
+            </AdminProvider>
+          </WishlistProvider>
         </CartProvider>
       </ThemeProvider>
     </ErrorBoundary>

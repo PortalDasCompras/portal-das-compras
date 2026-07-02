@@ -1,16 +1,19 @@
 import { Link, useLocation } from "wouter";
-import { ShoppingCart, ShoppingBag, Menu, X } from "lucide-react";
+import { ShoppingCart, ShoppingBag, Menu, X, Heart } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
+import { useWishlist } from "@/contexts/WishlistContext";
 import { useState } from "react";
 
 export default function Header() {
   const { totalItems } = useCart();
+  const { totalFavorites } = useWishlist();
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const navLinks = [
     { href: "/", label: "Início" },
     { href: "/categorias", label: "Categorias" },
+    { href: "/favoritos", label: "Favoritos" },
     { href: "/admin", label: "Admin" },
   ];
 
@@ -39,8 +42,18 @@ export default function Header() {
             ))}
           </nav>
 
-          {/* Cart + Mobile toggle */}
-          <div className="flex items-center gap-3">
+          {/* Cart + Favorites + Mobile toggle */}
+          <div className="flex items-center gap-2">
+            <Link href="/favoritos" className="relative flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-red-700 transition-colors border border-gray-200 rounded-lg px-3 py-2 hidden sm:flex">
+              <Heart className="w-4 h-4" />
+              <span>Favoritos</span>
+              {totalFavorites > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                  {totalFavorites > 9 ? "9+" : totalFavorites}
+                </span>
+              )}
+            </Link>
+
             <Link href="/carrinho" className="relative flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-red-700 transition-colors border border-gray-200 rounded-lg px-3 py-2">
               <ShoppingCart className="w-4 h-4" />
               <span className="hidden sm:inline">Carrinho</span>

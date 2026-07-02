@@ -32,3 +32,12 @@
 - [x] CRUD de produtos no admin
 - [x] Visualização e atualização de status de pedidos no admin
 - [x] Proteção de rotas admin (redirecionar se não logado)
+
+
+## Lista de Desejos (Favoritos)
+- [x] WishlistContext com estado de favoritos persistido em localStorage
+- [x] Ícone de coração no ProductCard com toggle de favorito
+- [x] Página /favoritos com grid de produtos salvos
+- [x] Botão "Adicionar ao carrinho" na página de favoritos
+- [x] Contador de favoritos no Header
+- [x] Sincronização entre páginas (adicionar/remover em qualquer lugar)
