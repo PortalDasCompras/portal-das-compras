@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Search, ChevronLeft, ChevronRight, Sparkles, Home as HomeIcon, Zap, Dumbbell, Shirt, Package } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, Sparkles, Home as HomeIcon, Zap, Dumbbell, Shirt, Package } from "lucide-react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import ProductCard from "@/components/ProductCard";
@@ -30,23 +30,47 @@ const BANNERS = [
 
 export default function Home() {
   const [search, setSearch] = useState("");
-  const [scrollPos, setScrollPos] = useState(0);
-  const [topSellingScroll, setTopSellingScroll] = useState(0);
-  const [categoriesScroll, setCategoriesScroll] = useState(0);
+  const [topSellingIndex, setTopSellingIndex] = useState(0);
+  const [categoriesIndex, setCategoriesIndex] = useState(0);
 
   const { data: products = [] } = trpc.products.list.useQuery(undefined, { refetchOnWindowFocus: false });
 
   // Ordenar produtos por mais vendidos (simulado por ID)
   const topSellingProducts = products.slice(0, 5);
 
-  const scroll = (direction: "left" | "right", containerId: string, setter: any, current: number) => {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    const scrollAmount = 300;
-    const newPos = direction === "left" ? current - scrollAmount : current + scrollAmount;
-    container.scrollLeft = newPos;
-    setter(newPos);
-  };
+  // Auto-scroll para Mais Vendidos
+  useEffect(() => {
+    if (topSellingProducts.length === 0) return;
+    const interval = setInterval(() => {
+      setTopSellingIndex(prev => (prev + 1) % topSellingProducts.length);
+    }, 5000); // Muda a cada 5 segundos
+    return () => clearInterval(interval);
+  }, [topSellingProducts.length]);
+
+  // Auto-scroll para Categorias
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCategoriesIndex(prev => (prev + 1) % CATEGORIES.length);
+    }, 6000); // Muda a cada 6 segundos
+    return () => clearInterval(interval);
+  }, []);
+
+  // Scroll para o item específico
+  useEffect(() => {
+    const container = document.getElementById("top-selling-carousel");
+    if (container && topSellingProducts.length > 0) {
+      const scrollAmount = topSellingIndex * 300;
+      container.scrollLeft = scrollAmount;
+    }
+  }, [topSellingIndex, topSellingProducts.length]);
+
+  useEffect(() => {
+    const container = document.getElementById("categories-carousel");
+    if (container) {
+      const scrollAmount = categoriesIndex * 160;
+      container.scrollLeft = scrollAmount;
+    }
+  }, [categoriesIndex]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -102,22 +126,6 @@ export default function Home() {
                   </div>
                 ))}
               </div>
-
-              {/* Carousel Controls */}
-              <button
-                onClick={() => scroll("left", "top-selling-carousel", setTopSellingScroll, topSellingScroll)}
-                className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 bg-red-600 hover:bg-red-700 text-white p-2 rounded-full transition-colors z-10"
-                aria-label="Anterior"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => scroll("right", "top-selling-carousel", setTopSellingScroll, topSellingScroll)}
-                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 bg-red-600 hover:bg-red-700 text-white p-2 rounded-full transition-colors z-10"
-                aria-label="Próximo"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
             </div>
           </div>
         )}
@@ -159,22 +167,6 @@ export default function Home() {
                 );
               })}
             </div>
-
-            {/* Carousel Controls */}
-            <button
-              onClick={() => scroll("left", "categories-carousel", setCategoriesScroll, categoriesScroll)}
-              className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 bg-red-600 hover:bg-red-700 text-white p-2 rounded-full transition-colors z-10"
-              aria-label="Anterior"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => scroll("right", "categories-carousel", setCategoriesScroll, categoriesScroll)}
-              className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 bg-red-600 hover:bg-red-700 text-white p-2 rounded-full transition-colors z-10"
-              aria-label="Próximo"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
           </div>
         </div>
       </div>

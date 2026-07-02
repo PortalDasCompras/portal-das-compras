@@ -250,19 +250,7 @@ export default function Produto() {
             </div>
           </div>
 
-          {/* Carousel Indicators */}
-          <div className="flex justify-center gap-2 mt-6">
-            {REVIEWS.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setReviewIndex(i)}
-                className={`h-2 rounded-full transition-all ${
-                  i === reviewIndex ? "bg-red-600 w-6" : "bg-gray-300 w-2"
-                }`}
-                aria-label={`Ir para avaliação ${i + 1}`}
-              />
-            ))}
-          </div>
+
         </div>
 
         {/* FAQ */}
