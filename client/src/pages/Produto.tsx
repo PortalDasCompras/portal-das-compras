@@ -18,7 +18,7 @@ const FAQ_ITEMS = [
   { q: "Como acompanho meu pedido?", a: "Após a confirmação do pagamento, você receberá um código de rastreio por e-mail para acompanhar a entrega." },
 ];
 
-const REVIEWS = [
+const ALL_REVIEWS = [
   { initials: "AP", name: "Ana Paula S.", city: "São Paulo - SP", time: "há 3 dias", text: "Chegou super rápido, muito melhor do que eu esperava! Recomendo demais, produto de qualidade e o atendimento foi excelente.", rating: 5 },
   { initials: "JM", name: "Juliana M.", city: "Belo Horizonte - MG", time: "há 2 semanas", text: "Muito bom pelo preço que paguei. Entrega demorou uns dias a mais, mas o produto compensou totalmente.", rating: 5 },
   { initials: "BK", name: "Beatriz K.", city: "João Pessoa - PB", time: "há 12 dias", text: "Excelente compra! Meu marido também gostou e vamos comprar outro para o trabalho dele.", rating: 5 },
@@ -27,27 +27,46 @@ const REVIEWS = [
   { initials: "MV", name: "Marcos V.", city: "Fortaleza - CE", time: "há 5 dias", text: "Cara, funcionou perfeitamente! Bateria dura mesmo o tempo que promete. Recomendo para todo mundo.", rating: 5 },
   { initials: "EP", name: "Eduardo P.", city: "Campinas - SP", time: "há 1 semana", text: "Comprei achando que iria demorar mas em 6 dias já estava aqui. Produto excelente, atendeu completamente.", rating: 5 },
   { initials: "PO", name: "Priscila O.", city: "Niterói - RJ", time: "há 4 dias", text: "Melhor site pra comprar! Sempre chega direitinho e o suporte responde super rápido no WhatsApp.", rating: 5 },
+  { initials: "CB", name: "Carlos B.", city: "Salvador - BA", time: "há 8 dias", text: "Superou minhas expectativas! Entrega rápida e produto de excelente qualidade. Voltaria a comprar com certeza!", rating: 5 },
+  { initials: "LR", name: "Larissa R.", city: "Curitiba - PR", time: "há 10 dias", text: "Adorei! Chegou bem embalado e o atendimento foi muito atencioso. Recomendo para todos os meus amigos!", rating: 5 },
+  { initials: "RM", name: "Roberto M.", city: "Brasília - DF", time: "há 1 dia", text: "Produto de qualidade premium. Vale cada centavo investido. Já é minha segunda compra aqui.", rating: 5 },
+  { initials: "SG", name: "Sophia G.", city: "Manaus - AM", time: "há 5 dias", text: "Entrega mais rápida do que esperava! Produto excelente, muito satisfeita com a compra.", rating: 5 },
+  { initials: "DT", name: "Diego T.", city: "Recife - PE", time: "há 9 dias", text: "Melhor custo-benefício que já vi! Produto chegou em perfeito estado e funciona maravilhosamente.", rating: 5 },
+  { initials: "NP", name: "Natália P.", city: "Porto Alegre - RS", time: "há 4 dias", text: "Comprei para presentear e a pessoa adorou! Voltarei a comprar com certeza.", rating: 5 },
+  { initials: "VH", name: "Victor H.", city: "Goiânia - GO", time: "há 7 dias", text: "Qualidade impecável! Atendimento excelente e entrega dentro do prazo. Recomendo muito!", rating: 5 },
+  { initials: "FS", name: "Fernanda S.", city: "Belém - PA", time: "há 2 dias", text: "Adorei a experiência de compra! Produto chegou bem protegido e em perfeito estado.", rating: 5 },
 ];
+
+// Função para variar quantidade de avaliações por produto
+function getReviewsForProduct(productId: number): typeof ALL_REVIEWS {
+  const quantities = [8, 12, 10, 14, 9, 11, 13, 15, 7, 16];
+  const index = (productId - 1) % quantities.length;
+  const quantity = quantities[index];
+  return ALL_REVIEWS.slice(0, Math.min(quantity, ALL_REVIEWS.length));
+}
 
 export default function Produto() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const { addItem } = useCart();
   const [openFaq, setOpenFaq] = useState<number | null>(0);
-  const [muted, setMuted] = useState(true);
+  const [muted, setMuted] = useState(false);
   const [added, setAdded] = useState(false);
   const [reviewIndex, setReviewIndex] = useState(0);
   const [showAllReviews, setShowAllReviews] = useState(false);
   const [autoPlayReviews, setAutoPlayReviews] = useState(true);
 
-  // Auto-scroll das avaliações
+  const productId = parseInt(id);
+  const REVIEWS = getReviewsForProduct(productId);
+
+  // Auto-scroll das avaliações com loop infinito
   useEffect(() => {
     if (!autoPlayReviews) return;
     const interval = setInterval(() => {
       setReviewIndex((prev) => (prev + 1) % REVIEWS.length);
     }, 2000); // Muda a cada 2 segundos
     return () => clearInterval(interval);
-  }, [autoPlayReviews]);
+  }, [autoPlayReviews, REVIEWS.length]);
 
   const { data: product, isLoading } = trpc.products.getById.useQuery(
     { id: parseInt(id) },
@@ -162,6 +181,7 @@ export default function Produto() {
                 playsInline
                 preload="metadata"
                 poster="https://portaldascompra.lovable.app/__l5e/assets-v1/095cedc1-f0ac-495f-b1d2-193c8179ce3f/ugc-product.mp4?t=0"
+                onLoadStart={() => console.log('Vídeo carregando...')}
               >
                 <source src="https://portaldascompra.lovable.app/__l5e/assets-v1/095cedc1-f0ac-495f-b1d2-193c8179ce3f/ugc-product.mp4" type="video/mp4" />
                 Seu navegador não suporta vídeos HTML5.
