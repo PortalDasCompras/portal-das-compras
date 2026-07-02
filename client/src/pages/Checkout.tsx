@@ -4,6 +4,7 @@ import { MapPin, User, CreditCard, Loader2, CheckCircle, AlertCircle } from "luc
 import { useCart } from "@/contexts/CartContext";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { PaymentProgress, type PaymentStep } from "@/components/PaymentProgress";
 
 interface AddressData {
   logradouro: string;
@@ -47,6 +48,11 @@ export default function Checkout() {
   const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
   const [paymentData, setPaymentData] = useState<any>(null);
   const [showPaymentResult, setShowPaymentResult] = useState(false);
+  const [paymentStep, setPaymentStep] = useState<PaymentStep | null>(null);
+  const [paymentMessage, setPaymentMessage] = useState("");
+  const [paymentProgress, setPaymentProgress] = useState(0);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
 
   const createOrder = trpc.orders.create.useMutation();
   const processPaymentMutation = trpc.orders.processPayment.useMutation();
@@ -126,7 +132,18 @@ export default function Checkout() {
       return;
     }
 
+    setIsProcessing(true);
+    setPaymentError(null);
+    setPaymentStep("validating");
+    setPaymentMessage("Validando seus dados...");
+    setPaymentProgress(0);
+
     try {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setPaymentProgress(25);
+      setPaymentStep("creating_order");
+      setPaymentMessage("Criando seu pedido...");
+
       const orderResult = await createOrder.mutateAsync({
         customerName: form.customerName,
         customerEmail: form.customerEmail,
@@ -143,6 +160,11 @@ export default function Checkout() {
         total,
         paymentMethod: form.paymentMethod,
       });
+
+      setPaymentProgress(50);
+      setPaymentStep("processing_payment");
+      const methodLabel = form.paymentMethod === "pix" ? "PIX" : form.paymentMethod === "boleto" ? "Boleto" : "Cartão";
+      setPaymentMessage(`Processando pagamento via ${methodLabel}...`);
 
       const paymentResult = await processPaymentMutation.mutateAsync({
         orderId: orderResult.orderId,
@@ -162,6 +184,15 @@ export default function Checkout() {
       });
 
       if (paymentResult.success) {
+        setPaymentProgress(75);
+        setPaymentStep("finalizing");
+        setPaymentMessage("Finalizando seu pedido...");
+
+        await new Promise(resolve => setTimeout(resolve, 800));
+        setPaymentProgress(100);
+        setPaymentStep("success");
+        setPaymentMessage("Pagamento confirmado com sucesso!");
+
         setPaymentData(paymentResult);
         setShowPaymentResult(true);
         clearCart();
@@ -170,13 +201,56 @@ export default function Checkout() {
           navigate("/pedido-confirmado");
         }, 3000);
       } else {
+        setPaymentStep("error");
+        setPaymentMessage(paymentResult.error || "Erro ao processar pagamento");
+        setPaymentError(paymentResult.error || "Erro ao processar pagamento");
         toast.error(paymentResult.error || "Erro ao processar pagamento");
       }
     } catch (err) {
       console.error("Erro ao finalizar pedido:", err);
+      setPaymentStep("error");
+      setPaymentMessage("Erro ao finalizar pedido. Tente novamente.");
+      setPaymentError("Erro ao finalizar pedido. Tente novamente.");
       toast.error("Erro ao finalizar pedido. Tente novamente.");
+    } finally {
+      setIsProcessing(false);
     }
   };
+
+  // Modal de progresso de pagamento
+  if (isProcessing && paymentStep) {
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4">
+          <PaymentProgress step={paymentStep} message={paymentMessage} progress={paymentProgress} />
+        </div>
+      </div>
+    );
+  }
+
+  // Modal de erro
+  if (paymentError && paymentStep === "error") {
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4">
+          <div className="text-center">
+            <AlertCircle className="w-16 h-16 text-red-600 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Erro no Pagamento</h2>
+            <p className="text-gray-600 mb-6">{paymentError}</p>
+            <button
+              onClick={() => {
+                setPaymentStep(null);
+                setPaymentError(null);
+              }}
+              className="w-full bg-red-600 text-white py-2 rounded-lg font-semibold hover:bg-red-700 transition"
+            >
+              Tentar Novamente
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (showPaymentResult && paymentData) {
     return (
@@ -229,8 +303,8 @@ export default function Checkout() {
     <div className="container py-8">
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Finalizar compra</h1>
 
-      <form onSubmit={handleSubmit}>
-        <div className="grid lg:grid-cols-3 gap-6">
+      <form onSubmit={handleSubmit} className={isProcessing ? "opacity-50 pointer-events-none" : ""}>
+        <div className={`grid lg:grid-cols-3 gap-6 ${isProcessing ? "blur-sm" : ""}`}>
           {/* Form */}
           <div className="lg:col-span-2 space-y-5">
             {/* Personal Data */}
