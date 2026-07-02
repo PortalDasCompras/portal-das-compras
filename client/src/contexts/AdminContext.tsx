@@ -1,43 +1,44 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from "react";
-import { trpc } from "@/lib/trpc";
 
 interface AdminContextType {
   isAdmin: boolean;
   loading: boolean;
   login: (username: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
+  logout: () => void;
 }
 
 const AdminContext = createContext<AdminContextType | null>(null);
+
+const ADMIN_USERNAME = "claysson";
+const ADMIN_PASSWORD = "1508";
 
 export function AdminProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const checkQuery = trpc.adminAuth.check.useQuery(undefined, {
-    retry: false,
-    refetchOnWindowFocus: false,
-  });
-
+  // Verificar se já está logado ao montar
   useEffect(() => {
-    if (checkQuery.data !== undefined) {
-      setIsAdmin(checkQuery.data.authenticated);
-      setLoading(false);
+    const adminToken = localStorage.getItem("admin_token");
+    if (adminToken) {
+      setIsAdmin(true);
     }
-  }, [checkQuery.data]);
-
-  const loginMutation = trpc.adminAuth.login.useMutation();
-  const logoutMutation = trpc.adminAuth.logout.useMutation();
+    setLoading(false);
+  }, []);
 
   const login = useCallback(async (username: string, password: string) => {
-    await loginMutation.mutateAsync({ username, password });
-    setIsAdmin(true);
-  }, [loginMutation]);
+    if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+      const token = Math.random().toString(36).substring(2, 15);
+      localStorage.setItem("admin_token", token);
+      setIsAdmin(true);
+    } else {
+      throw new Error("Credenciais inválidas");
+    }
+  }, []);
 
-  const logout = useCallback(async () => {
-    await logoutMutation.mutateAsync();
+  const logout = useCallback(() => {
+    localStorage.removeItem("admin_token");
     setIsAdmin(false);
-  }, [logoutMutation]);
+  }, []);
 
   return (
     <AdminContext.Provider value={{ isAdmin, loading, login, logout }}>
