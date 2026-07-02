@@ -111,12 +111,20 @@ export async function processPayment(data: PaymentData): Promise<PaymentResponse
 
     // Adicionar dados específicos por método de pagamento
     if (data.paymentMethod === "credit_card" && data.cardData) {
-      // Token do cartão deve ser gerado no frontend e enviado aqui
-      // Por enquanto, usamos um placeholder que será substituído
-      paymentPayload.token = data.cardData.cardNumber;
-      paymentPayload.installments = 1;
-      paymentPayload.statement_descriptor = "PORTAL COMPRAS";
-      paymentPayload.issuer_id = -1;
+      try {
+        // Tokenizar cartão de forma segura
+        const cardToken = await tokenizeCard(data.cardData);
+        paymentPayload.token = cardToken;
+        paymentPayload.installments = 1;
+        paymentPayload.statement_descriptor = "PORTAL COMPRAS";
+        paymentPayload.issuer_id = -1;
+      } catch (tokenError) {
+        console.error("Erro ao tokenizar cartão:", tokenError);
+        return {
+          success: false,
+          error: "Erro ao processar dados do cartão. Verifique os dados e tente novamente.",
+        };
+      }
     } else if (data.paymentMethod === "pix") {
       // PIX requer que o pagamento seja criado e o QR code retornado
     } else if (data.paymentMethod === "boleto") {
